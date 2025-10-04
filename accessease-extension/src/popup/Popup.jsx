@@ -13,6 +13,9 @@ const Popup = () => {
   const [userQuestion, setUserQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('accessibility'); // 'accessibility' or 'ai'
+  const [apiKey, setApiKey] = useState('');
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
     chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'lineFocus', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
@@ -22,6 +25,16 @@ const Popup = () => {
       setBackgroundColor(result.backgroundColor || 'default');
       setFontSize(result.fontSize || 100);
       setDyslexiaMode(result.dyslexiaMode || false);
+    });
+    
+    // Check if API key is set
+    sendMessageToBackground("getApiKey", {}, (response) => {
+      if (response && response.success) {
+        setHasApiKey(response.hasApiKey);
+        if (!response.hasApiKey) {
+          setShowApiKeyInput(true);
+        }
+      }
     });
   }, []);
 
@@ -64,6 +77,24 @@ const Popup = () => {
           }, 200);
         });
       });
+    });
+  };
+
+  const handleSetApiKey = async () => {
+    if (!apiKey.trim()) {
+      alert("Please enter your Gemini API key");
+      return;
+    }
+    
+    await sendMessageToBackground("setApiKey", { apiKey: apiKey.trim() }, (response) => {
+      if (response && response.success) {
+        setHasApiKey(true);
+        setShowApiKeyInput(false);
+        setApiKey('');
+        alert("API key saved successfully!");
+      } else {
+        alert("Failed to save API key. Please try again.");
+      }
     });
   };
 
@@ -387,6 +418,81 @@ const Popup = () => {
       {activeTab === 'ai' && (
         <div>
           <h4>AI Assistant</h4>
+          
+          {/* API Key Management */}
+          {showApiKeyInput && (
+            <div style={{ 
+              marginBottom: '15px', 
+              padding: '10px', 
+              backgroundColor: '#f8f9fa', 
+              border: '1px solid #dee2e6', 
+              borderRadius: '4px' 
+            }}>
+              <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#6c757d' }}>
+                🔑 Enter your Gemini API key to use AI features:
+              </p>
+              <input
+                type="password"
+                placeholder="Your Gemini API key..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  marginBottom: '8px',
+                  border: '1px solid #ced4da',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              />
+              <button
+                onClick={handleSetApiKey}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  backgroundColor: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Save API Key
+              </button>
+              <p style={{ margin: '8px 0 0 0', fontSize: '10px', color: '#6c757d' }}>
+                Get your free API key at: <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer">Google AI Studio</a>
+              </p>
+            </div>
+          )}
+          
+          {hasApiKey && (
+            <div style={{ 
+              marginBottom: '15px', 
+              padding: '8px', 
+              backgroundColor: '#d4edda', 
+              border: '1px solid #c3e6cb', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#155724'
+            }}>
+              ✅ API key configured
+              <button
+                onClick={() => setShowApiKeyInput(true)}
+                style={{
+                  float: 'right',
+                  background: 'none',
+                  border: 'none',
+                  color: '#007bff',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textDecoration: 'underline'
+                }}
+              >
+                Change
+              </button>
+            </div>
+          )}
           
           {/* Quick Actions */}
           <div style={{ marginBottom: '15px' }}>

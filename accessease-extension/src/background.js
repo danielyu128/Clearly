@@ -1,5 +1,6 @@
 // AI Assistant functionality using Gemini API with automatic model detection
-const GEMINI_API_KEY = "AIzaSyCr-UaAnA-BkSq3GffxNCeG4MFRiiuyt4Q";
+// API key should be set by the user in the extension settings
+let GEMINI_API_KEY = null;
 
 // List of possible model endpoints to try
 const POSSIBLE_MODELS = [
@@ -17,6 +18,35 @@ let availableModels = [];
 // Track active requests to prevent duplicates
 const activeRequests = new Set();
 
+// Function to get API key from storage
+async function getApiKey() {
+  if (GEMINI_API_KEY) {
+    return GEMINI_API_KEY;
+  }
+  
+  try {
+    const result = await chrome.storage.sync.get(['geminiApiKey']);
+    GEMINI_API_KEY = result.geminiApiKey;
+    return GEMINI_API_KEY;
+  } catch (error) {
+    console.error('Failed to get API key from storage:', error);
+    return null;
+  }
+}
+
+// Function to set API key in storage
+async function setApiKey(apiKey) {
+  try {
+    await chrome.storage.sync.set({ geminiApiKey: apiKey });
+    GEMINI_API_KEY = apiKey;
+    console.log('API key saved successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to save API key:', error);
+    return false;
+  }
+}
+
 // Function to test API key and find working model
 async function findWorkingModel() {
   if (workingModelUrl) {
@@ -25,9 +55,15 @@ async function findWorkingModel() {
 
   console.log("🔍 Testing API key and finding working model...");
   
+  // Get API key from storage
+  const apiKey = await getApiKey();
+  if (!apiKey) {
+    throw new Error("No API key found. Please set your Gemini API key in the extension settings.");
+  }
+  
   // First, test API key with models list
   try {
-    const modelsUrl = `https://generativelanguage.googleapis.com/v1/models?key=${GEMINI_API_KEY}`;
+    const modelsUrl = `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`;
     console.log("Testing API key with models list...");
     
     const response = await fetch(modelsUrl);
@@ -47,7 +83,7 @@ async function findWorkingModel() {
           console.log(`🧪 Testing available model: ${modelUrl}`);
           
           try {
-            const testUrl = `${modelUrl}?key=${GEMINI_API_KEY}`;
+            const testUrl = `${modelUrl}?key=${apiKey}`;
             const testResponse = await fetch(testUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -83,7 +119,7 @@ async function findWorkingModel() {
     try {
       console.log(`🧪 Testing predefined model: ${modelUrl}`);
       
-      const testUrl = `${modelUrl}?key=${GEMINI_API_KEY}`;
+      const testUrl = `${modelUrl}?key=${apiKey}`;
       const response = await fetch(testUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,7 +200,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle async operations properly
   (async () => {
     try {
-      if (request.action === "summarizePage" || request.action === "askQuestion") {
+      if (request.action === "setApiKey") {
+        // Handle API key setting
+        const success = await setApiKey(request.apiKey);
+        sendResponse({ success, message: success ? "API key saved successfully" : "Failed to save API key" });
+      } else if (request.action === "getApiKey") {
+        // Handle API key retrieval (for checking if it's set)
+        const apiKey = await getApiKey();
+        sendResponse({ success: true, hasApiKey: !!apiKey });
+      } else if (request.action === "summarizePage" || request.action === "askQuestion") {
         // Create a unique request ID to prevent duplicates
         const requestId = `${request.action}_${sender.tab?.id || 'popup'}_${Date.now()}`;
         
@@ -177,9 +221,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         activeRequests.add(requestId);
         console.log("Processing AI request:", request.action, "ID:", requestId);
         
-        // Find working model
+        // Get API key and find working model
+        const apiKey = await getApiKey();
+        if (!apiKey) {
+          sendResponse({ success: false, error: "No API key found. Please set your Gemini API key in the extension settings." });
+          return;
+        }
+        
         const apiUrl = await findWorkingModel();
-        const fullUrl = `${apiUrl}?key=${GEMINI_API_KEY}`;
+        const fullUrl = `${apiUrl}?key=${apiKey}`;
         
         // Limit page text to avoid API limits (reduce from 50k to 10k for better performance)
         const pageText = request.pageText ? request.pageText.substring(0, 10000) : "";
