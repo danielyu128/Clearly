@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 
 const Popup = () => {
   const [colorFilter, setColorFilter] = useState('none');
-  const [dyslexiaFont, setDyslexiaFont] = useState('none');
   const [dyslexiaSpacing, setDyslexiaSpacing] = useState(false);
   const [lineFocus, setLineFocus] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState('default');
   const [ttsActive, setTtsActive] = useState(false);
+  const [fontSize, setFontSize] = useState(100);
+  const [dyslexiaMode, setDyslexiaMode] = useState(false);
 
   useEffect(() => {
-    chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'dyslexiaSpacing', 'lineFocus', 'backgroundColor', 'ttsActive'], (result) => {
+    chrome.storage.sync.get(['colorFilter', 'dyslexiaSpacing', 'lineFocus', 'backgroundColor', 'ttsActive', 'fontSize', 'dyslexiaMode'], (result) => {
       setColorFilter(result.colorFilter || 'none');
-      setDyslexiaFont(result.dyslexiaFont || 'none');
       setDyslexiaSpacing(result.dyslexiaSpacing || false);
       setLineFocus(result.lineFocus || false);
       setBackgroundColor(result.backgroundColor || 'default');
       setTtsActive(result.ttsActive || false);
+      setFontSize(result.fontSize || 100);
+      setDyslexiaMode(result.dyslexiaMode || false);
     });
   }, []);
 
@@ -32,13 +34,6 @@ const Popup = () => {
     setColorFilter(newFilter);
     chrome.storage.sync.set({ colorFilter: newFilter });
     sendMessageToContentScript("SET_COLOR_FILTER", newFilter);
-  };
-
-  const handleDyslexiaFontChange = (e) => {
-    const newFont = e.target.value;
-    setDyslexiaFont(newFont);
-    chrome.storage.sync.set({ dyslexiaFont: newFont });
-    sendMessageToContentScript("SET_DYSLEXIA_FONT", newFont);
   };
 
   const handleDyslexiaSpacingToggle = () => {
@@ -69,6 +64,36 @@ const Popup = () => {
     sendMessageToContentScript("TOGGLE_TTS", newState);
   };
 
+  const handleFontSizeChange = (e) => {
+    const newSize = parseInt(e.target.value);
+    if (!isNaN(newSize) && newSize >= 60 && newSize <= 140) {
+      setFontSize(newSize);
+      chrome.storage.sync.set({ fontSize: newSize });
+      sendMessageToContentScript("SET_FONT_SIZE", newSize);
+    }
+  };
+
+  const handleFontSizeIncrease = () => {
+    const newSize = Math.min(fontSize + 1, 140);
+    setFontSize(newSize);
+    chrome.storage.sync.set({ fontSize: newSize });
+    sendMessageToContentScript("SET_FONT_SIZE", newSize);
+  };
+
+  const handleFontSizeDecrease = () => {
+    const newSize = Math.max(fontSize - 1, 60);
+    setFontSize(newSize);
+    chrome.storage.sync.set({ fontSize: newSize });
+    sendMessageToContentScript("SET_FONT_SIZE", newSize);
+  };
+
+  const handleDyslexiaModeToggle = () => {
+    const newState = !dyslexiaMode;
+    setDyslexiaMode(newState);
+    chrome.storage.sync.set({ dyslexiaMode: newState });
+    sendMessageToContentScript(newState ? "enableDyslexia" : "disableDyslexia");
+  };
+
   return (
     <div style={{ width: '250px', padding: '15px' }}>
       <h3>AccessEase Controls</h3>
@@ -83,16 +108,73 @@ const Popup = () => {
       </select>
       <br /><br />
 
-      <h4>Dyslexia Mode</h4>
-      <select value={dyslexiaFont} onChange={handleDyslexiaFontChange}>
-        <option value="none">Default Font</option>
-        <option value="OpenDyslexic">OpenDyslexic</option>
-        <option value="Lexend">Lexend</option>
-        <option value="Arial">Arial</option>
-      </select>
-      <br />
+      <h4>Dyslexia Spacing</h4>
       <button onClick={handleDyslexiaSpacingToggle}>
         {dyslexiaSpacing ? "Disable Spacing" : "Enable Spacing"}
+      </button>
+      <br /><br />
+
+      <h4>Font Size</h4>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+        <button 
+          onClick={handleFontSizeDecrease}
+          style={{ 
+            padding: '5px 10px', 
+            fontSize: '16px', 
+            fontWeight: 'bold',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: '#f5f5f5',
+            cursor: 'pointer'
+          }}
+        >
+          -
+        </button>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="number"
+            min="60"
+            max="140"
+            value={fontSize}
+            onChange={handleFontSizeChange}
+            style={{ 
+              width: '70px', 
+              textAlign: 'right', 
+              padding: '5px 20px 5px 5px',
+              border: '1px solid #ccc',
+              borderRadius: '4px'
+            }}
+          />
+          <span style={{ 
+            position: 'absolute', 
+            right: '8px', 
+            top: '50%', 
+            transform: 'translateY(-50%)',
+            fontSize: '14px',
+            pointerEvents: 'none',
+            color: '#666'
+          }}>%</span>
+        </div>
+        <button 
+          onClick={handleFontSizeIncrease}
+          style={{ 
+            padding: '5px 10px', 
+            fontSize: '16px', 
+            fontWeight: 'bold',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: '#f5f5f5',
+            cursor: 'pointer'
+          }}
+        >
+          +
+        </button>
+      </div>
+      <br />
+
+      <h4>Dyslexia Mode</h4>
+      <button onClick={handleDyslexiaModeToggle}>
+        {dyslexiaMode ? "Disable Dyslexia Mode" : "Enable Dyslexia Mode"}
       </button>
       <br /><br />
 
