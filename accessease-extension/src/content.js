@@ -329,6 +329,172 @@ const removeDyslexiaMode = () => {
   });
 };
 
+// --- AI Assistant Functions ---
+
+const extractPageText = () => {
+  // Extract structured metadata first
+  const metadata = extractStructuredMetadata();
+  
+  // Remove script and style elements
+  const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, aside');
+  elementsToRemove.forEach(el => el.remove());
+  
+  // Get main content areas
+  const mainContent = document.querySelector('main') || document.querySelector('article') || document.querySelector('.content') || document.body;
+  
+  // Extract text content
+  let text = mainContent.innerText || mainContent.textContent || '';
+  
+  // Clean up the text
+  text = text
+    .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+    .replace(/\n\s*\n/g, '\n') // Remove empty lines
+    .trim();
+  
+  // Combine metadata with content for better AI analysis
+  const structuredText = `PAGE METADATA:
+Title: ${metadata.title}
+Author: ${metadata.author}
+Published Date: ${metadata.publishedDate}
+Website: ${metadata.website}
+URL: ${metadata.url}
+
+MAIN CONTENT:
+${text}`;
+  
+  // Limit text length to avoid API limits (approximately 100k characters)
+  if (structuredText.length > 100000) {
+    return structuredText.substring(0, 100000) + '...';
+  }
+  
+  return structuredText;
+};
+
+const extractStructuredMetadata = () => {
+  const metadata = {
+    title: '',
+    author: '',
+    publishedDate: '',
+    website: '',
+    url: window.location.href
+  };
+  
+  // Extract title
+  metadata.title = document.title || 
+    document.querySelector('h1')?.textContent?.trim() ||
+    document.querySelector('[data-testid="headline"]')?.textContent?.trim() ||
+    document.querySelector('.headline')?.textContent?.trim() ||
+    'Not specified';
+  
+  // Extract author (look for common patterns)
+  const authorSelectors = [
+    '[data-testid="author"]',
+    '.author',
+    '.byline',
+    '.writer',
+    '[rel="author"]',
+    '.article-author',
+    '.post-author',
+    '.entry-author',
+    'meta[name="author"]',
+    'meta[property="article:author"]'
+  ];
+  
+  for (const selector of authorSelectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      metadata.author = element.textContent?.trim() || element.content || '';
+      if (metadata.author) break;
+    }
+  }
+  
+  // If no author found, look for "by [name]" patterns in text
+  if (!metadata.author) {
+    const textContent = document.body.textContent || '';
+    const bylineMatch = textContent.match(/(?:by|By|BY)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/);
+    if (bylineMatch) {
+      metadata.author = bylineMatch[1];
+    }
+  }
+  
+  // Extract published date
+  const dateSelectors = [
+    'meta[property="article:published_time"]',
+    'meta[name="date"]',
+    'meta[name="pubdate"]',
+    'meta[name="publication_date"]',
+    '.published-date',
+    '.post-date',
+    '.article-date',
+    '.entry-date',
+    '[data-testid="timestamp"]',
+    'time[datetime]'
+  ];
+  
+  for (const selector of dateSelectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      metadata.publishedDate = element.content || element.textContent?.trim() || element.getAttribute('datetime') || '';
+      if (metadata.publishedDate) break;
+    }
+  }
+  
+  // Extract website name
+  metadata.website = document.querySelector('meta[property="og:site_name"]')?.content ||
+    document.querySelector('meta[name="application-name"]')?.content ||
+    window.location.hostname ||
+    'Not specified';
+  
+  // Clean up extracted data
+  metadata.author = metadata.author || 'Not specified';
+  metadata.publishedDate = metadata.publishedDate || 'Not specified';
+  
+  return metadata;
+};
+
+const findAndHighlightElement = (searchTerm) => {
+  // Search for elements containing the search term
+  const searchTerms = searchTerm.toLowerCase().split(' ');
+  const allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, div, span, a, button, li');
+  
+  for (const element of allElements) {
+    const text = element.textContent.toLowerCase();
+    if (searchTerms.some(term => text.includes(term))) {
+      // Highlight the element
+      element.style.backgroundColor = 'yellow';
+      element.style.border = '2px solid orange';
+      element.style.borderRadius = '4px';
+      
+      // Scroll to the element
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Remove highlight after 5 seconds
+      setTimeout(() => {
+        element.style.backgroundColor = '';
+        element.style.border = '';
+        element.style.borderRadius = '';
+      }, 5000);
+      
+      return true;
+    }
+  }
+  return false;
+};
+
+const sendToAI = async (action, query = null) => {
+  const pageText = extractPageText();
+  
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({
+      action: action,
+      query: query,
+      pageText: pageText
+    }, (response) => {
+      resolve(response);
+    });
+  });
+};
+
 // --- Initialization and Message Listener ---
 
 const initializeSettings = () => {
@@ -348,34 +514,112 @@ const initializeSettings = () => {
   injectDyslexiaFonts(); // Pre-inject fonts for faster loading
 };
 
-// Listen for messages from the popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case "SET_COLOR_FILTER":
-      setColorFilter(request.value);
-      break;
-    case "SET_DYSLEXIA_FONT":
-      setDyslexiaFont(request.value);
-      break;
-    case "TOGGLE_LINE_FOCUS":
-      toggleLineFocus(request.value);
-      break;
-    case "SET_BACKGROUND_COLOR":
-      setBackgroundColor(request.value);
-      break;
-    case "SET_FONT_SIZE":
-      setFontSize(request.value);
-      break;
-    case "enableDyslexia":
-      applyDyslexiaMode();
-      chrome.storage.sync.set({ dyslexiaMode: true });
-      break;
-    case "disableDyslexia":
-      removeDyslexiaMode();
-      chrome.storage.sync.set({ dyslexiaMode: false });
-      break;
-    default:
-      break;
+// Listen for messages from the popup and background
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  console.log("Content script received message:", request);
+  
+  try {
+    switch (request.type || request.action) {
+      case "EXT_PING":
+        // Ping handler for content script detection
+        console.log("Content script ping received");
+        sendResponse({ ok: true, timestamp: Date.now() });
+        return false; // Synchronous response
+      
+      case "GET_PAGE_TEXT":
+        // Extract and return page text
+        try {
+          console.log("Extracting page text...");
+          const pageText = extractPageText();
+          console.log("Page text extracted, length:", pageText.length);
+          sendResponse({ success: true, pageText: pageText });
+        } catch (error) {
+          console.error("Page text extraction error:", error);
+          sendResponse({ success: false, error: error.message });
+        }
+        return false; // Synchronous response
+      
+      case "SET_COLOR_FILTER":
+        setColorFilter(request.value);
+        sendResponse({ success: true });
+        return false;
+      
+      case "SET_DYSLEXIA_FONT":
+        setDyslexiaFont(request.value);
+        sendResponse({ success: true });
+        return false;
+      
+      case "TOGGLE_LINE_FOCUS":
+        toggleLineFocus(request.value);
+        sendResponse({ success: true });
+        return false;
+      
+      case "SET_BACKGROUND_COLOR":
+        setBackgroundColor(request.value);
+        sendResponse({ success: true });
+        return false;
+      
+      case "SET_FONT_SIZE":
+        setFontSize(request.value);
+        sendResponse({ success: true });
+        return false;
+      
+      case "enableDyslexia":
+        applyDyslexiaMode();
+        chrome.storage.sync.set({ dyslexiaMode: true });
+        sendResponse({ success: true });
+        return false;
+      
+      case "disableDyslexia":
+        removeDyslexiaMode();
+        chrome.storage.sync.set({ dyslexiaMode: false });
+        sendResponse({ success: true });
+        return false;
+      
+      case "SUMMARIZE_PAGE":
+        try {
+          console.log("Starting page summarization...");
+          const response = await sendToAI("summarizePage");
+          console.log("Summarization response:", response);
+          sendResponse(response);
+        } catch (error) {
+          console.error("Summarization error:", error);
+          sendResponse({ success: false, error: error.message });
+        }
+        return true; // Keep message channel open for async response
+      
+      case "ASK_QUESTION":
+        try {
+          console.log("Processing question:", request.query);
+          const response = await sendToAI("askQuestion", request.query);
+          console.log("Question response:", response);
+          sendResponse(response);
+        } catch (error) {
+          console.error("Question error:", error);
+          sendResponse({ success: false, error: error.message });
+        }
+        return true; // Keep message channel open for async response
+      
+      case "FIND_AND_HIGHLIGHT":
+        try {
+          console.log("Finding and highlighting:", request.searchTerm);
+          const found = findAndHighlightElement(request.searchTerm);
+          sendResponse({ success: true, found: found });
+        } catch (error) {
+          console.error("Find and highlight error:", error);
+          sendResponse({ success: false, error: error.message });
+        }
+        return false; // Synchronous response
+      
+      default:
+        console.warn("Unknown message type:", request.type || request.action);
+        sendResponse({ success: false, error: "Unknown message type" });
+        return false;
+    }
+  } catch (error) {
+    console.error("Content script message handler error:", error);
+    sendResponse({ success: false, error: error.message });
+    return false;
   }
 });
 
