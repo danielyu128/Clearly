@@ -246,13 +246,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         
         console.log("Making API request to working model:", fullUrl.substring(0, 100) + "...");
         
-        // Create more accurate, structured prompts
+        // Smart page type detection and adaptive prompting
         let prompt = "";
         if (request.action === "summarizePage") {
-          prompt = `Analyze this webpage and provide a structured summary. Look for and extract specific information:
+          // Clean and analyze the page text for type detection
+          // Note: pageText should already be clean text from content script
+          const rawText = pageText
+            .replace(/\s+/g, " ")
+            .replace(/(\n\s*){2,}/g, "\n")
+            .trim()
+            .slice(0, 8000);
+
+          // Detect if it's a text-heavy article or structured page
+          const wordCount = rawText.split(/\s+/).length;
+          const sentences = rawText.split(/[.!?]/).filter(s => s.trim().length > 0);
+          const avgSentenceLength = sentences.length > 0 ? sentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0) / sentences.length : 0;
+          
+          // Simple and reliable detection: default to article unless clearly structured
+          // Only treat as structured page if it's extremely obvious (ads, iframes, very short content)
+          const isStructuredPage = wordCount < 50 || 
+                                 (wordCount < 100 && avgSentenceLength < 3) ||
+                                 rawText.toLowerCase().includes('ad frame') ||
+                                 rawText.toLowerCase().includes('advertisement') ||
+                                 rawText.toLowerCase().includes('iframe') ||
+                                 rawText.toLowerCase().includes('syndication') ||
+                                 rawText.toLowerCase().includes('tpc.googlesyndication') ||
+                                 rawText.toLowerCase().includes('tags.crwdcntrl') ||
+                                 (rawText.length < 200 && !rawText.includes('.')); // Very short content with no sentences
+          
+          const finalIsArticleLike = !isStructuredPage;
+
+          console.log(`Page analysis: ${wordCount} words, ${avgSentenceLength.toFixed(1)} avg sentence length`);
+          console.log(`Structured page detected: ${isStructuredPage}`);
+          console.log(`Final article detection: ${finalIsArticleLike}`);
+          console.log(`Raw text preview: ${rawText.substring(0, 200)}...`);
+
+          if (finalIsArticleLike) {
+            // Enhanced article summarization with better structure
+            prompt = `You are an accessibility assistant helping users quickly understand online articles.
+
+Analyze this webpage and provide a structured summary. Look for and extract specific information:
 
 WEBPAGE CONTENT:
-${pageText}
+${rawText}
 
 Please provide:
 1. MAIN TOPIC: What is this article/page about? (1-2 sentences)
@@ -261,7 +297,24 @@ Please provide:
 4. KEY POINTS: What are the main points? (3-4 bullet points)
 5. SOURCE: What website/publication is this from?
 
-Be precise and only include information that is explicitly stated in the content. If information is not available, say "Not specified" rather than guessing.`;
+Use a friendly, conversational tone. Be precise and only include information that is explicitly stated in the content. If information is not available, say "Not specified" rather than guessing.`;
+          } else {
+            // Adaptive behavior for structured or dynamic pages
+            prompt = `You are an accessibility assistant helping users understand the purpose and structure of a webpage.
+
+The following content was extracted from a webpage that might not be an article (could be a dashboard, profile page, document editor, search page, etc.).
+
+Please:
+- Identify what kind of page it likely is (profile page, dashboard, document editor, search page, social media, etc.)
+- Explain what the user might be seeing and what they can do here
+- Mention key visible elements or functions (like buttons, tabs, forms, navigation) in a clear and natural way
+- Keep the explanation smooth, natural, and friendly — avoid robotic phrasing
+- Focus on the main purpose and functionality, not technical details
+- Do NOT repeat HTML, code, or unrelated text
+
+Content:
+${rawText}`;
+          }
         } else {
           // Enhanced Q&A with better context
           const question = request.query.toLowerCase();
@@ -322,10 +375,10 @@ Instructions:
               }
             ],
             generationConfig: {
-              temperature: 0.7,
+              temperature: 0.8, // Higher for more natural, less robotic responses
               topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 2048, // Increased from 1024
+              topP: 0.9, // Slightly lower for more focused responses
+              maxOutputTokens: 1024, // Optimized for both article and structured page responses
             }
           })
         });

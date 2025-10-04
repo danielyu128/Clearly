@@ -7,7 +7,7 @@ const Popup = () => {
   const [backgroundColor, setBackgroundColor] = useState('default');
   const [fontSize, setFontSize] = useState(100);
   const [dyslexiaMode, setDyslexiaMode] = useState(false);
-  
+
   // AI Assistant states
   const [aiResponse, setAiResponse] = useState('');
   const [userQuestion, setUserQuestion] = useState('');
@@ -403,15 +403,15 @@ const Popup = () => {
       </button>
       <br /><br />
 
-          <h4>Background & Contrast</h4>
-          <select value={backgroundColor} onChange={handleBackgroundColorChange}>
-            <option value="default">Default (White)</option>
-            <option value="lightyellow">Light Yellow</option>
-            <option value="softgray">Soft Gray</option>
-            <option value="pastelblue">Pastel Blue</option>
-            <option value="beige">Beige</option>
-          </select>
-          <br /><br />
+      <h4>Background & Contrast</h4>
+      <select value={backgroundColor} onChange={handleBackgroundColorChange}>
+        <option value="default">Default (White)</option>
+        <option value="lightyellow">Light Yellow</option>
+        <option value="softgray">Soft Gray</option>
+        <option value="pastelblue">Pastel Blue</option>
+        <option value="beige">Beige</option>
+      </select>
+      <br /><br />
         </div>
       )}
 
