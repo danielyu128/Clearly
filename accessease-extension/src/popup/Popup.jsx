@@ -2,20 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 const Popup = () => {
   const [colorFilter, setColorFilter] = useState('none');
-  const [dyslexiaSpacing, setDyslexiaSpacing] = useState(false);
+  const [dyslexiaFont, setDyslexiaFont] = useState('none');
   const [lineFocus, setLineFocus] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState('default');
-  const [ttsActive, setTtsActive] = useState(false);
   const [fontSize, setFontSize] = useState(100);
   const [dyslexiaMode, setDyslexiaMode] = useState(false);
 
   useEffect(() => {
-    chrome.storage.sync.get(['colorFilter', 'dyslexiaSpacing', 'lineFocus', 'backgroundColor', 'ttsActive', 'fontSize', 'dyslexiaMode'], (result) => {
+    chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'lineFocus', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
       setColorFilter(result.colorFilter || 'none');
-      setDyslexiaSpacing(result.dyslexiaSpacing || false);
+      setDyslexiaFont(result.dyslexiaFont || 'none');
       setLineFocus(result.lineFocus || false);
       setBackgroundColor(result.backgroundColor || 'default');
-      setTtsActive(result.ttsActive || false);
       setFontSize(result.fontSize || 100);
       setDyslexiaMode(result.dyslexiaMode || false);
     });
@@ -36,11 +34,11 @@ const Popup = () => {
     sendMessageToContentScript("SET_COLOR_FILTER", newFilter);
   };
 
-  const handleDyslexiaSpacingToggle = () => {
-    const newState = !dyslexiaSpacing;
-    setDyslexiaSpacing(newState);
-    chrome.storage.sync.set({ dyslexiaSpacing: newState });
-    sendMessageToContentScript("TOGGLE_DYSLEXIA_SPACING", newState);
+  const handleDyslexiaFontChange = (e) => {
+    const newFont = e.target.value;
+    setDyslexiaFont(newFont);
+    chrome.storage.sync.set({ dyslexiaFont: newFont });
+    sendMessageToContentScript("SET_DYSLEXIA_FONT", newFont);
   };
 
   const handleLineFocusToggle = () => {
@@ -55,13 +53,6 @@ const Popup = () => {
     setBackgroundColor(newColor);
     chrome.storage.sync.set({ backgroundColor: newColor });
     sendMessageToContentScript("SET_BACKGROUND_COLOR", newColor);
-  };
-
-  const handleTtsToggle = () => {
-    const newState = !ttsActive;
-    setTtsActive(newState);
-    chrome.storage.sync.set({ ttsActive: newState });
-    sendMessageToContentScript("TOGGLE_TTS", newState);
   };
 
   const handleFontSizeChange = (e) => {
@@ -108,10 +99,14 @@ const Popup = () => {
       </select>
       <br /><br />
 
-      <h4>Dyslexia Spacing</h4>
-      <button onClick={handleDyslexiaSpacingToggle}>
-        {dyslexiaSpacing ? "Disable Spacing" : "Enable Spacing"}
-      </button>
+      <h4>Dyslexia-Friendly Fonts</h4>
+      <select value={dyslexiaFont} onChange={handleDyslexiaFontChange}>
+        <option value="none">Default Font</option>
+        <option value="OpenDyslexic">OpenDyslexic</option>
+        <option value="Lexend">Lexend Deca</option>
+        <option value="Atkinson">Atkinson Hyperlegible</option>
+        <option value="Arial">Arial</option>
+      </select>
       <br /><br />
 
       <h4>Font Size</h4>
@@ -194,10 +189,6 @@ const Popup = () => {
       </select>
       <br /><br />
 
-      <h4>Text-to-Speech</h4>
-      <button onClick={handleTtsToggle}>
-        {ttsActive ? "Disable TTS" : "Enable TTS"}
-      </button>
     </div>
   );
 };

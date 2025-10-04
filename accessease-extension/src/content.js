@@ -1,32 +1,44 @@
 // Initial state variables
 let currentColorFilter = 'none';
 let currentDyslexiaFont = 'none';
-let dyslexiaSpacingActive = false;
 let lineFocusActive = false;
 let currentBackgroundColor = 'default';
-let ttsActive = false;
 let currentFontSize = 100;
 let originalFontSizes = new Map();
 let lineFocusDiv = null;
 let mutationObserver = null;
-let ttsUtterance = null;
 let dyslexiaModeActive = false;
 
 // --- Utility Functions ---
 
 const applyStylesToElement = (element) => {
-  // Apply dyslexia font and spacing
+  // Apply dyslexia-friendly fonts with enhanced readability
   if (currentDyslexiaFont !== 'none') {
-    element.style.fontFamily = `'${currentDyslexiaFont}', sans-serif`;
-  } else {
-    element.style.fontFamily = '';
-  }
-
-  if (dyslexiaSpacingActive) {
+    let fontFamily = '';
+    switch (currentDyslexiaFont) {
+      case 'OpenDyslexic':
+        fontFamily = "'OpenDyslexic', sans-serif";
+        break;
+      case 'Lexend':
+        fontFamily = "'Lexend Deca', sans-serif";
+        break;
+      case 'Atkinson':
+        fontFamily = "'Atkinson Hyperlegible', sans-serif";
+        break;
+      case 'Arial':
+        fontFamily = "Arial, sans-serif";
+        break;
+      default:
+        fontFamily = `'${currentDyslexiaFont}', sans-serif`;
+    }
+    element.style.fontFamily = fontFamily;
+    
+    // Apply dyslexia-friendly spacing for better readability
     element.style.letterSpacing = '0.1em';
-    element.style.wordSpacing = '0.25em';
+    element.style.wordSpacing = '0.15em';
     element.style.lineHeight = '1.6';
   } else {
+    element.style.fontFamily = '';
     element.style.letterSpacing = '';
     element.style.wordSpacing = '';
     element.style.lineHeight = '';
@@ -170,19 +182,10 @@ const disableDyslexiaMode = () => {
 
 const setDyslexiaFont = (font) => {
   currentDyslexiaFont = font;
-  if (font === 'none' && !dyslexiaSpacingActive) {
+  if (font === 'none') {
     disableDyslexiaMode();
   } else {
     enableDyslexiaMode();
-  }
-};
-
-const toggleDyslexiaSpacing = (active) => {
-  dyslexiaSpacingActive = active;
-  if (active || currentDyslexiaFont !== 'none') {
-    enableDyslexiaMode();
-  } else {
-    disableDyslexiaMode();
   }
 };
 
@@ -326,44 +329,14 @@ const removeDyslexiaMode = () => {
   });
 };
 
-// --- Text-to-Speech (TTS) ---
-
-const toggleTTS = (active) => {
-  ttsActive = active;
-  if (active) {
-    document.addEventListener("mouseup", handleMouseUpForTTS);
-  } else {
-    document.removeEventListener("mouseup", handleMouseUpForTTS);
-    if (speechSynthesis.speaking) {
-      speechSynthesis.cancel();
-    }
-  }
-};
-
-const handleMouseUpForTTS = () => {
-  if (ttsActive) {
-    const selected = window.getSelection().toString().trim();
-    if (selected) {
-      if (speechSynthesis.speaking) {
-        speechSynthesis.cancel();
-      }
-      ttsUtterance = new SpeechSynthesisUtterance(selected);
-      ttsUtterance.rate = 1.0;
-      speechSynthesis.speak(ttsUtterance);
-    }
-  }
-};
-
 // --- Initialization and Message Listener ---
 
 const initializeSettings = () => {
-  chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'dyslexiaSpacing', 'lineFocus', 'backgroundColor', 'ttsActive', 'fontSize', 'dyslexiaMode'], (result) => {
+  chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'lineFocus', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
     setColorFilter(result.colorFilter || 'none');
     setDyslexiaFont(result.dyslexiaFont || 'none');
-    toggleDyslexiaSpacing(result.dyslexiaSpacing || false);
     toggleLineFocus(result.lineFocus || false);
     setBackgroundColor(result.backgroundColor || 'default');
-    toggleTTS(result.ttsActive || false);
     setFontSize(result.fontSize || 100);
     
     // Initialize dyslexia mode
@@ -384,17 +357,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case "SET_DYSLEXIA_FONT":
       setDyslexiaFont(request.value);
       break;
-    case "TOGGLE_DYSLEXIA_SPACING":
-      toggleDyslexiaSpacing(request.value);
-      break;
     case "TOGGLE_LINE_FOCUS":
       toggleLineFocus(request.value);
       break;
     case "SET_BACKGROUND_COLOR":
       setBackgroundColor(request.value);
-      break;
-    case "TOGGLE_TTS":
-      toggleTTS(request.value);
       break;
     case "SET_FONT_SIZE":
       setFontSize(request.value);
