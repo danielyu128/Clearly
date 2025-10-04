@@ -27,10 +27,11 @@ const Popup = () => {
       setDyslexiaMode(result.dyslexiaMode || false);
     });
     
-    // Check if API key is set
+    // Check if API key is set (hide UI if config key is available)
     sendMessageToBackground("getApiKey", {}, (response) => {
       if (response && response.success) {
         setHasApiKey(response.hasApiKey);
+        // Only show API key input if no key is available at all
         if (!response.hasApiKey) {
           setShowApiKeyInput(true);
         }

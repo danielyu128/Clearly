@@ -1,5 +1,7 @@
 // AI Assistant functionality using Gemini API with automatic model detection
-// API key should be set by the user in the extension settings
+import { CONFIG } from './config.js';
+
+// API key from config file (for demo) or user storage (for production)
 let GEMINI_API_KEY = null;
 
 // List of possible model endpoints to try
@@ -18,12 +20,20 @@ let availableModels = [];
 // Track active requests to prevent duplicates
 const activeRequests = new Set();
 
-// Function to get API key from storage
+// Function to get API key from config file or storage
 async function getApiKey() {
   if (GEMINI_API_KEY) {
     return GEMINI_API_KEY;
   }
   
+  // First try to use API key from config file (for demo purposes)
+  if (CONFIG.GEMINI_API_KEY) {
+    GEMINI_API_KEY = CONFIG.GEMINI_API_KEY;
+    console.log('Using API key from config file');
+    return GEMINI_API_KEY;
+  }
+  
+  // Fallback to user storage (for production)
   try {
     const result = await chrome.storage.sync.get(['geminiApiKey']);
     GEMINI_API_KEY = result.geminiApiKey;
