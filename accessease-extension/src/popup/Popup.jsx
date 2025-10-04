@@ -467,33 +467,6 @@ const Popup = () => {
             </div>
           )}
           
-          {hasApiKey && (
-            <div style={{ 
-              marginBottom: '15px', 
-              padding: '8px', 
-              backgroundColor: '#d4edda', 
-              border: '1px solid #c3e6cb', 
-              borderRadius: '4px',
-              fontSize: '12px',
-              color: '#155724'
-            }}>
-              ✅ API key configured
-              <button
-                onClick={() => setShowApiKeyInput(true)}
-                style={{
-                  float: 'right',
-                  background: 'none',
-                  border: 'none',
-                  color: '#007bff',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  textDecoration: 'underline'
-                }}
-              >
-                Change
-              </button>
-            </div>
-          )}
           
           {/* Quick Actions */}
           <div style={{ marginBottom: '15px' }}>
