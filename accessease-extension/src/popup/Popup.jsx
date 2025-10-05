@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Search, BookOpen, Type, Eye, Monitor, ArrowUp } from 'lucide-react';
 
 const Popup = () => {
   const [colorFilter, setColorFilter] = useState('none');
@@ -16,6 +17,9 @@ const Popup = () => {
   const [apiKey, setApiKey] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   useEffect(() => {
     chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'elementFocusMode', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
@@ -270,6 +274,29 @@ const Popup = () => {
     await sendMessageToContentScript(newState ? "enableDyslexia" : "disableDyslexia");
   };
 
+  // Carousel drag functionality
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - e.currentTarget.offsetLeft);
+    setScrollLeft(e.currentTarget.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - e.currentTarget.offsetLeft;
+    const walk = (x - startX) * 2;
+    e.currentTarget.scrollLeft = scrollLeft - walk;
+  };
+
   return (
     <div className="relative w-[400px] h-[600px] overflow-hidden bg-[#0a0f1a] rounded-2xl">
       {/* Animated gradient blobs */}
@@ -287,38 +314,41 @@ const Popup = () => {
         <div className="flex gap-1 mb-4">
           <button
             onClick={() => setActiveTab('accessibility')}
-            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+            className={`tab-button glass-reflection flex-1 py-2 px-3 rounded-full font-semibold text-sm transition-all duration-300 ${
               activeTab === 'accessibility'
-                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/50"
-                : "bg-white/5 text-white/70 hover:bg-white/10 backdrop-blur-sm"
+                ? "bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-xl shadow-blue-500/60 backdrop-blur-xl scale-[1.02]"
+                : "bg-white/10 text-white/80 hover:bg-white/20 backdrop-blur-xl hover:shadow-lg hover:shadow-white/20"
             }`}
           >
             Accessibility
           </button>
           <button
             onClick={() => setActiveTab('ai')}
-            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+            className={`tab-button glass-reflection flex-1 py-2 px-3 rounded-full font-semibold text-sm transition-all duration-300 ${
               activeTab === 'ai'
-                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/50"
-                : "bg-white/5 text-white/70 hover:bg-white/10 backdrop-blur-sm"
+                ? "bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-xl shadow-blue-500/60 backdrop-blur-xl scale-[1.02]"
+                : "bg-white/10 text-white/80 hover:bg-white/20 backdrop-blur-xl hover:shadow-lg hover:shadow-white/20"
             }`}
           >
-            AI Assistant
+            AI Focus
           </button>
         </div>
 
         {/* Accessibility Controls */}
         {activeTab === 'accessibility' && (
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+          <div className="space-y-6 max-h-96 overflow-y-auto pr-2">
             <h2 className="text-lg font-bold text-white">Accessibility Controls</h2>
 
             {/* Color Blind Filters */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Color Blind Filters</h3>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Color Blind Filters
+              </h3>
               <select 
                 value={colorFilter} 
                 onChange={handleColorFilterChange}
-                className="w-full bg-white/10 backdrop-blur-sm border-white/20 text-white text-sm py-2 rounded-lg hover:bg-white/15 transition-colors px-3"
+                className="glass-reflection glass-corner w-full bg-white/15 backdrop-blur-xl text-white text-sm py-2 rounded-full hover:bg-white/20 hover:shadow-lg hover:shadow-white/20 transition-all px-3"
               >
                 <option value="none" className="text-white text-sm">Off</option>
                 <option value="protanopia" className="text-white text-sm">Protanopia</option>
@@ -329,12 +359,15 @@ const Popup = () => {
             </div>
 
             {/* Dyslexia-Friendly Fonts */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Dyslexia-Friendly Fonts</h3>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Type className="w-4 h-4" />
+                Dyslexia-Friendly Fonts
+              </h3>
               <select 
                 value={dyslexiaFont} 
                 onChange={handleDyslexiaFontChange}
-                className="w-full bg-white/10 backdrop-blur-sm border-white/20 text-white text-sm py-2 rounded-lg hover:bg-white/15 transition-colors px-3"
+                className="glass-reflection glass-corner w-full bg-white/15 backdrop-blur-xl text-white text-sm py-2 rounded-full hover:bg-white/20 hover:shadow-lg hover:shadow-white/20 transition-all px-3"
               >
                 <option value="none" className="text-white text-sm">Default Font</option>
                 <option value="OpenDyslexic" className="text-white text-sm">OpenDyslexic</option>
@@ -345,21 +378,27 @@ const Popup = () => {
             </div>
 
             {/* Font Size */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Font Size</h3>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="flex items-baseline gap-0.5">
+                  <span className="text-xs">a</span>
+                  <span className="text-sm">A</span>
+                </span>
+                Font Size
+              </h3>
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={handleFontSizeDecrease}
-                  className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:text-white transition-all flex items-center justify-center"
+                  className="glass-reflection w-8 h-8 rounded-full bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:text-white hover:scale-110 hover:shadow-xl hover:shadow-white/30 transition-all flex items-center justify-center"
                 >
                   <span className="text-lg font-bold">-</span>
                 </button>
-                <div className="flex items-center justify-center min-w-[120px] h-8 px-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
+                <div className="glass-reflection flex items-center justify-center min-w-[120px] h-8 px-3 rounded-full bg-white/15 backdrop-blur-xl border border-white/30">
                   <span className="text-sm font-semibold text-white">{fontSize} %</span>
                 </div>
                 <button
                   onClick={handleFontSizeIncrease}
-                  className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:text-white transition-all flex items-center justify-center"
+                  className="glass-reflection w-8 h-8 rounded-full bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:text-white hover:scale-110 hover:shadow-xl hover:shadow-white/30 transition-all flex items-center justify-center"
                 >
                   <span className="text-lg font-bold">+</span>
                 </button>
@@ -378,94 +417,119 @@ const Popup = () => {
             </div>
 
             {/* Dyslexia Mode */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Dyslexia Mode</h3>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Dyslexia Mode
+              </h3>
               <button
                 onClick={handleDyslexiaModeToggle}
-                className="w-full px-4 py-2 text-sm rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all shadow-lg hover:shadow-blue-500/30"
+                className={`glass-corner-shine w-full px-4 py-2 text-sm rounded-full backdrop-blur-xl hover:scale-[1.02] transition-all shadow-xl hover:shadow-2xl ${
+                  dyslexiaMode
+                    ? "bg-white/25 text-white border border-white/30 shadow-white/30"
+                    : "bg-white/15 text-white hover:bg-white/25 hover:shadow-blue-400/30"
+                }`}
               >
                 {dyslexiaMode ? "Disable Dyslexia Mode" : "Enable Dyslexia Mode"}
               </button>
             </div>
 
             {/* Element Focus */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Element Focus</h3>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Element Focus
+              </h3>
               <button
                 onClick={handleElementFocusToggle}
-                className="w-full px-4 py-2 text-sm rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all shadow-lg hover:shadow-blue-500/30"
+                className={`glass-corner-shine w-full px-4 py-2 text-sm rounded-full backdrop-blur-xl hover:scale-[1.02] transition-all shadow-xl hover:shadow-2xl ${
+                  elementFocusMode
+                    ? "bg-white/25 text-white border border-white/30 shadow-white/30"
+                    : "bg-white/15 text-white hover:bg-white/25 hover:shadow-blue-400/30"
+                }`}
               >
                 {elementFocusMode ? "Disable Element Focus" : "Enable Element Focus"}
               </button>
             </div>
 
             {/* Background & Contrast */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-bold text-white">Background & Contrast</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleBackgroundColorChange({ target: { value: 'default' } })}
-                  className={`py-2 px-3 text-xs rounded-lg transition-all shadow-lg font-semibold ${
-                    backgroundColor === 'default'
-                      ? "bg-blue-500 text-white shadow-blue-500/50"
-                      : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20"
-                  }`}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Monitor className="w-4 h-4" />
+                Background & Contrast
+              </h3>
+              <div className="carousel-container">
+                <div 
+                  className="contrast-carousel"
+                  onMouseDown={handleMouseDown}
+                  onMouseLeave={handleMouseLeave}
+                  onMouseUp={handleMouseUp}
+                  onMouseMove={handleMouseMove}
                 >
-                  Default
-                </button>
-                <button
-                  onClick={() => handleBackgroundColorChange({ target: { value: 'lightyellow' } })}
-                  className={`py-2 px-3 text-xs rounded-lg transition-all shadow-lg font-semibold ${
-                    backgroundColor === 'lightyellow'
-                      ? "bg-blue-500 text-white shadow-blue-500/50"
-                      : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20"
-                  }`}
-                >
-                  Hi-Contrast
-                </button>
-                <button
-                  onClick={() => handleBackgroundColorChange({ target: { value: 'darkmode' } })}
-                  className={`py-2 px-3 text-xs rounded-lg transition-all shadow-lg font-semibold ${
-                    backgroundColor === 'darkmode'
-                      ? "bg-blue-500 text-white shadow-blue-500/50"
-                      : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20"
-                  }`}
-                >
-                  Dark Mode
-                </button>
-                <button
-                  onClick={() => handleBackgroundColorChange({ target: { value: 'pastelblue' } })}
-                  className={`py-2 px-3 text-xs rounded-lg transition-all shadow-lg font-semibold ${
-                    backgroundColor === 'pastelblue'
-                      ? "bg-blue-500 text-white shadow-blue-500/50"
-                      : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20"
-                  }`}
-                >
-                  Calm
-                </button>
-                <button
-                  onClick={() => handleBackgroundColorChange({ target: { value: 'beige' } })}
-                  className={`py-2 px-3 text-xs rounded-lg transition-all shadow-lg font-semibold ${
-                    backgroundColor === 'beige'
-                      ? "bg-blue-500 text-white shadow-blue-500/50"
-                      : "bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20"
-                  }`}
-                >
-                  Reading Mode
-                </button>
+                  <button
+                    onClick={() => handleBackgroundColorChange({ target: { value: 'default' } })}
+                    className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
+                      backgroundColor === 'default'
+                        ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
+                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                    }`}
+                  >
+                    Default
+                  </button>
+                  <button
+                    onClick={() => handleBackgroundColorChange({ target: { value: 'lightyellow' } })}
+                    className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
+                      backgroundColor === 'lightyellow'
+                        ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
+                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                    }`}
+                  >
+                    Hi-Contrast
+                  </button>
+                  <button
+                    onClick={() => handleBackgroundColorChange({ target: { value: 'darkmode' } })}
+                    className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
+                      backgroundColor === 'darkmode'
+                        ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
+                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                    }`}
+                  >
+                    Dark Mode
+                  </button>
+                  <button
+                    onClick={() => handleBackgroundColorChange({ target: { value: 'pastelblue' } })}
+                    className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
+                      backgroundColor === 'pastelblue'
+                        ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
+                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                    }`}
+                  >
+                    Calm
+                  </button>
+                  <button
+                    onClick={() => handleBackgroundColorChange({ target: { value: 'beige' } })}
+                    className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
+                      backgroundColor === 'beige'
+                        ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
+                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                    }`}
+                  >
+                    Reading Mode
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* AI Assistant Tab */}
+        {/* AI Focus Tab */}
         {activeTab === 'ai' && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-white">AI Assistant</h2>
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-white">AI Focus</h2>
             
             {/* API Key Management */}
             {showApiKeyInput && (
-              <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/20">
+              <div className="glass-reflection p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/20">
                 <p className="text-white/70 text-sm mb-2">
                   🔑 Enter your Gemini API key to use AI features:
                 </p>
@@ -474,11 +538,11 @@ const Popup = () => {
                   placeholder="Your Gemini API key..."
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  className="w-full p-2 mb-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 text-sm"
+                  className="glass-reflection w-full p-2 mb-2 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 text-white placeholder-white/50 text-sm"
                 />
                 <button
                   onClick={handleSetApiKey}
-                  className="w-full py-2 px-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-semibold text-sm shadow-lg shadow-blue-500/50"
+                  className="glass-reflection w-full py-2 px-3 bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white rounded-full hover:from-blue-500/90 hover:to-blue-700/90 transition-all font-semibold text-sm shadow-xl shadow-blue-500/60 hover:shadow-blue-500/80"
                 >
                   Save API Key
                 </button>
@@ -489,42 +553,48 @@ const Popup = () => {
             )}
             
             {/* Quick Actions */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <button
                 onClick={handleSummarizePage}
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all font-semibold text-sm shadow-lg shadow-green-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="glass-corner-shine w-full py-3 px-4 bg-gradient-to-br from-blue-500/90 via-purple-500/90 to-pink-500/90 text-white rounded-full hover:from-blue-600/90 hover:via-purple-600/90 hover:to-pink-600/90 transition-all font-semibold text-sm shadow-xl shadow-purple-500/60 hover:shadow-purple-500/80 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Processing...' : '📄 Summarize Page'}
+                {isLoading ? 'Processing...' : 'Summarize Page'}
               </button>
             </div>
             
             {/* Question Input */}
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={userQuestion}
-                onChange={(e) => setUserQuestion(e.target.value)}
-                placeholder="Ask a question about this page..."
-                className="w-full p-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 text-sm"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAskQuestion();
-                  }
-                }}
-              />
-              <button
-                onClick={handleAskQuestion}
-                disabled={isLoading || !userQuestion.trim()}
-                className="w-full py-2 px-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all font-semibold text-sm shadow-lg shadow-blue-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Thinking...' : '🤖 Ask AI'}
-              </button>
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={userQuestion}
+                  onChange={(e) => setUserQuestion(e.target.value)}
+                  placeholder="Ask a question about this page..."
+                  className="glass-reflection w-full px-3 py-2 pr-12 bg-white/15 backdrop-blur-xl border border-white/20 text-white placeholder-white/50 text-sm rounded-full"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAskQuestion();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleAskQuestion}
+                  disabled={isLoading || !userQuestion.trim()}
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    userQuestion.trim() && !isLoading
+                      ? 'bg-white text-gray-800 hover:bg-white/90 shadow-lg'
+                      : 'bg-white/20 text-white/40 cursor-not-allowed'
+                  }`}
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             
             {/* AI Response */}
             {aiResponse && (
-              <div className="p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/20 max-h-40 overflow-y-auto">
+              <div className="glass-reflection p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/20 max-h-40 overflow-y-auto">
                 <strong className="text-white text-sm">AI Response:</strong>
                 <div className="mt-2 text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
                   {aiResponse}

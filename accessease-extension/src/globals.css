@@ -91,3 +91,276 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
+
+.glass-reflection {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08), inset 0 0 20px
+    rgba(255, 255, 255, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-reflection:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 30px rgba(255, 255, 255, 0.12), inset 0 0 25px
+    rgba(255, 255, 255, 0.05);
+}
+
+.glass-reflection:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 15px rgba(255, 255, 255, 0.05), inset 0 0 15px
+    rgba(255, 255, 255, 0.02);
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-reflection::before {
+  content: "";
+  position: absolute;
+  top: -5%;
+  left: -5%;
+  width: 45%;
+  height: 45%;
+  background: radial-gradient(
+    ellipse at 20% 20%,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.25) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 75%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  transform: rotate(-8deg);
+  filter: blur(1px);
+}
+
+.glass-reflection:nth-child(2n)::before {
+  top: -3%;
+  left: -8%;
+  width: 50%;
+  height: 42%;
+  background: radial-gradient(
+    ellipse at 15% 25%,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.2) 30%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 80%
+  );
+  transform: rotate(-12deg);
+}
+
+.glass-reflection:nth-child(3n)::before {
+  top: -7%;
+  left: -2%;
+  width: 48%;
+  height: 48%;
+  background: radial-gradient(
+    ellipse at 25% 18%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.28) 28%,
+    rgba(255, 255, 255, 0.1) 52%,
+    transparent 78%
+  );
+  transform: rotate(-5deg);
+}
+
+.glass-reflection:nth-child(4n)::before {
+  top: -4%;
+  left: -6%;
+  width: 52%;
+  height: 44%;
+  background: radial-gradient(
+    ellipse at 18% 22%,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.22) 32%,
+    rgba(255, 255, 255, 0.07) 58%,
+    transparent 82%
+  );
+  transform: rotate(-10deg);
+  filter: blur(1.5px);
+}
+
+.glass-reflection:nth-child(5n)::before {
+  top: -6%;
+  left: -4%;
+  width: 46%;
+  height: 50%;
+  background: radial-gradient(
+    ellipse at 22% 16%,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.26) 26%,
+    rgba(255, 255, 255, 0.09) 54%,
+    transparent 76%
+  );
+  transform: rotate(-7deg);
+}
+
+.glass-reflection > * {
+  position: relative;
+  z-index: 2;
+}
+
+.glass-corner::before {
+  top: -8% !important;
+  left: -8% !important;
+  width: 40% !important;
+  height: 40% !important;
+  background: radial-gradient(
+    ellipse at 15% 15%,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.35) 20%,
+    rgba(255, 255, 255, 0.15) 40%,
+    rgba(255, 255, 255, 0.05) 60%,
+    transparent 80%
+  ) !important;
+  transform: rotate(-5deg) !important;
+  filter: blur(0.5px) !important;
+}
+
+/* Horizontal scrolling carousel */
+.contrast-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  gap: 8px;
+  padding: 8px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.contrast-carousel:active {
+  cursor: grabbing;
+}
+
+.contrast-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.contrast-item {
+  flex: 0 0 auto;
+  min-width: 80px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(0.9);
+  opacity: 0.7;
+  pointer-events: auto;
+}
+
+.contrast-item.active {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.contrast-item:hover {
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+.contrast-item.active:hover {
+  transform: scale(1.05);
+}
+
+.carousel-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.carousel-container::before,
+.carousel-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.carousel-container::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(10, 15, 26, 0.8), transparent);
+}
+
+.carousel-container::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(10, 15, 26, 0.8), transparent);
+}
+
+/* Enhanced corner shine effect for specific buttons */
+.glass-corner-shine {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.08), inset 0 0 20px
+    rgba(255, 255, 255, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-corner-shine:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 30px rgba(255, 255, 255, 0.12), inset 0 0 25px
+    rgba(255, 255, 255, 0.05);
+}
+
+.glass-corner-shine:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 15px rgba(255, 255, 255, 0.05), inset 0 0 15px
+    rgba(255, 255, 255, 0.02);
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-corner-shine::before {
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 35%;
+  height: 35%;
+  background: radial-gradient(
+    ellipse at 10% 10%,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.4) 15%,
+    rgba(255, 255, 255, 0.2) 30%,
+    rgba(255, 255, 255, 0.1) 45%,
+    transparent 60%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  transform: rotate(-15deg);
+  filter: blur(0.8px);
+}
+
+/* Press-down animations for all interactive elements */
+button:active,
+select:active,
+input:active {
+  transform: translateY(1px) scale(0.98) !important;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Special press animation for tab buttons */
+.tab-button:active {
+  transform: translateY(2px) scale(0.96) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Press animation for carousel items */
+.contrast-item:active {
+  transform: scale(0.85) !important;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Custom dropdown arrow positioning */
+select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 32px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
