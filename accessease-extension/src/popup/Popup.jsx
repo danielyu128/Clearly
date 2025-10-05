@@ -404,14 +404,88 @@ const Popup = () => {
       <br /><br />
 
       <h4>Background & Contrast</h4>
-      <select value={backgroundColor} onChange={handleBackgroundColorChange}>
-        <option value="default">Default (White)</option>
-        <option value="lightyellow">Light Yellow</option>
-        <option value="softgray">Soft Gray</option>
-        <option value="pastelblue">Pastel Blue</option>
-        <option value="beige">Beige</option>
-      </select>
-      <br /><br />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button
+          onClick={() => handleBackgroundColorChange({ target: { value: 'default' } })}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: backgroundColor === 'default' ? '#007bff' : '#f8f9fa',
+            color: backgroundColor === 'default' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          Default
+        </button>
+        
+        <button
+          onClick={() => handleBackgroundColorChange({ target: { value: 'lightyellow' } })}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: backgroundColor === 'lightyellow' ? '#007bff' : '#f8f9fa',
+            color: backgroundColor === 'lightyellow' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          Hi-Contrast
+        </button>
+        
+        <button
+          onClick={() => handleBackgroundColorChange({ target: { value: 'darkmode' } })}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: backgroundColor === 'darkmode' ? '#007bff' : '#f8f9fa',
+            color: backgroundColor === 'darkmode' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          Dark Mode
+        </button>
+        
+        <button
+          onClick={() => handleBackgroundColorChange({ target: { value: 'pastelblue' } })}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: backgroundColor === 'pastelblue' ? '#007bff' : '#f8f9fa',
+            color: backgroundColor === 'pastelblue' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          Calm
+        </button>
+        
+        <button
+          onClick={() => handleBackgroundColorChange({ target: { value: 'beige' } })}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            backgroundColor: backgroundColor === 'beige' ? '#007bff' : '#f8f9fa',
+            color: backgroundColor === 'beige' ? 'white' : '#333',
+            cursor: 'pointer',
+            fontSize: '12px',
+            textAlign: 'left'
+          }}
+        >
+          Reading Mode
+        </button>
+      </div>
+      <br />
         </div>
       )}
 

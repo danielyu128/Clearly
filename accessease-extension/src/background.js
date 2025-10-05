@@ -164,6 +164,12 @@ function extractTextFromResponse(data) {
     console.warn("⚠️ Response was truncated due to token limit");
   }
   
+  // Check for safety issues
+  if (data?.candidates?.[0]?.finishReason === "SAFETY") {
+    console.warn("⚠️ Response blocked due to safety filters");
+    return "Response was blocked due to content safety filters. Please try rephrasing your request.";
+  }
+  
   // Try different possible response structures
   if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
     return data.candidates[0].content.parts[0].text;
@@ -186,21 +192,36 @@ function extractTextFromResponse(data) {
     
     if (candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
-        if (part.text) {
+        if (part.text && part.text.trim()) {
           return part.text;
         }
       }
     }
     
-    // Check if content exists but is empty
-    if (candidate.content && !candidate.content.parts) {
-      console.warn("⚠️ Content exists but no parts found");
-      return "Response was generated but content is empty. This might be due to content filtering or token limits.";
+    // Check if content exists but is empty or has no text
+    if (candidate.content) {
+      if (!candidate.content.parts) {
+        console.warn("⚠️ Content exists but no parts found");
+      } else {
+        console.warn("⚠️ Content parts exist but no text found");
+        console.log("Parts:", candidate.content.parts);
+      }
+      
+      // Try to provide a helpful response based on finish reason
+      if (candidate.finishReason === "STOP") {
+        return "The AI generated a response but no text content was found. This might be due to content filtering or an unexpected response format.";
+      } else if (candidate.finishReason === "MAX_TOKENS") {
+        return "The response was cut off due to length limits. Please try a shorter request.";
+      } else if (candidate.finishReason === "SAFETY") {
+        return "The response was blocked due to content safety filters. Please try rephrasing your request.";
+      } else {
+        return `Response generated but content is empty. Finish reason: ${candidate.finishReason || 'unknown'}`;
+      }
     }
   }
   
   console.error("❌ Could not extract text from response structure");
-  return null;
+  return "Unable to extract response from the AI. Please try again.";
 }
 
 // Listen for messages from content script and popup
@@ -292,12 +313,12 @@ ${rawText}
 
 Please provide:
 1. MAIN TOPIC: What is this article/page about? (1-2 sentences)
-2. AUTHOR: Who wrote this? (if mentioned)
-3. PUBLISH DATE: When was this published? (if mentioned)
+2. AUTHOR: Who wrote this? (if mentioned, otherwise say "Not specified")
+3. PUBLISH DATE: When was this published? (if mentioned, otherwise say "Not specified")
 4. KEY POINTS: What are the main points? (3-4 bullet points)
 5. SOURCE: What website/publication is this from?
 
-Use a friendly, conversational tone. Be precise and only include information that is explicitly stated in the content. If information is not available, say "Not specified" rather than guessing.`;
+Use a friendly, conversational tone. For author and date, only include information that is explicitly stated. For the main topic and key points, provide helpful analysis based on the content. If specific information is not available, say "Not specified" rather than guessing.`;
           } else {
             // Adaptive behavior for structured or dynamic pages
             prompt = `You are an accessibility assistant helping users understand the purpose and structure of a webpage.
@@ -358,10 +379,11 @@ WEBPAGE CONTENT:
 ${pageText}
 
 Instructions:
-- Be precise and factual
-- Only use information explicitly stated in the content
-- If the information is not available, say "This information is not specified in the content"
-- Quote specific text when relevant`;
+- Be helpful and provide the best answer you can based on the content
+- For specific facts (like exact quotes, names, dates), only use information explicitly stated
+- For general questions about topics or concepts, provide helpful analysis based on the content
+- If specific information is not available, say "This specific information is not mentioned in the content"
+- Be conversational and helpful rather than overly restrictive`;
           }
         }
         
@@ -378,7 +400,7 @@ Instructions:
               temperature: 0.8, // Higher for more natural, less robotic responses
               topK: 40,
               topP: 0.9, // Slightly lower for more focused responses
-              maxOutputTokens: 1024, // Optimized for both article and structured page responses
+              maxOutputTokens: 2048, // Increased to prevent truncation
             }
           })
         });

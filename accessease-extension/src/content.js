@@ -226,10 +226,11 @@ const toggleLineFocus = (active) => {
 
 const getBackgroundContrastColors = (preset) => {
   switch (preset) {
-    case 'lightyellow': return { bgColor: '#fff9c4', textColor: '#333333' };
+    case 'lightyellow': return { bgColor: '#000000', textColor: '#ffffff' }; // Hi-Contrast
+    case 'darkmode': return { bgColor: '#1a1a1a', textColor: '#e0e0e0' }; // Dark Mode
     case 'softgray': return { bgColor: '#f5f5f5', textColor: '#333333' };
-    case 'pastelblue': return { bgColor: '#e3f2fd', textColor: '#333333' };
-    case 'beige': return { bgColor: '#f5f5dc', textColor: '#333333' };
+    case 'pastelblue': return { bgColor: '#e3f2fd', textColor: '#333333' }; // Calm
+    case 'beige': return { bgColor: '#f5f5dc', textColor: '#333333' }; // Reading Mode
     case 'default':
     default: return { bgColor: '', textColor: '' };
   }
