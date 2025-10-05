@@ -195,13 +195,13 @@ const setDyslexiaFont = (font) => {
 
 const toggleElementFocus = (active) => {
   elementFocusModeActive = active;
-  
+
   if (active) {
     // Change cursor to pointer for the entire document
     document.body.style.cursor = "pointer";
     document.documentElement.style.cursor = "pointer";
     
-    // Create overlay for dimming non-hovered elements
+    // Create enhanced overlay for blur + tint effect
     if (!elementFocusOverlay) {
       elementFocusOverlay = document.createElement("div");
       elementFocusOverlay.id = "accessease-element-focus-overlay";
@@ -212,11 +212,21 @@ const toggleElementFocus = (active) => {
         width: "100%",
         height: "100%",
         pointerEvents: "none",
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
+        backgroundColor: "rgba(128, 128, 128, 0.25)", // Soft gray tint
+        backdropFilter: "blur(3px)", // Blur effect
+        WebkitBackdropFilter: "blur(3px)", // Safari support
         zIndex: "999999998",
-        transition: "opacity 0.2s ease"
+        transition: "all 0.25s ease-in-out",
+        opacity: "0"
       });
       document.body.appendChild(elementFocusOverlay);
+      
+      // Fade in the overlay
+      setTimeout(() => {
+        if (elementFocusOverlay) {
+          elementFocusOverlay.style.opacity = "1";
+        }
+      }, 10);
     }
 
     // Add mouse move listener for hover detection
@@ -240,8 +250,14 @@ const toggleElementFocus = (active) => {
     document.documentElement.style.cursor = "";
     
     if (elementFocusOverlay) {
-      elementFocusOverlay.remove();
-      elementFocusOverlay = null;
+      // Fade out before removing
+      elementFocusOverlay.style.opacity = "0";
+      setTimeout(() => {
+        if (elementFocusOverlay) {
+          elementFocusOverlay.remove();
+          elementFocusOverlay = null;
+        }
+      }, 250);
     }
     
     document.removeEventListener("mousemove", handleElementHover);
@@ -263,7 +279,11 @@ const handleElementHover = (e) => {
     // Get the element under the mouse cursor
     const element = document.elementFromPoint(e.clientX, e.clientY);
     
-    if (!element || element === currentHighlightedElement) return;
+    if (!element) {
+      // If no element under cursor, clear highlight
+      clearElementHighlight();
+      return;
+    }
     
     // Skip if hovering over our own overlay or extension elements
     if (element.id === "accessease-element-focus-overlay" || 
@@ -271,65 +291,132 @@ const handleElementHover = (e) => {
       return;
     }
     
-    // Clear previous highlight
-    clearElementHighlight();
-    
-    // Find a suitable parent element to highlight (avoid highlighting tiny elements)
+    // Find a suitable element to highlight
     const targetElement = findSuitableHighlightElement(element);
     
-    if (targetElement) {
-      highlightElement(targetElement);
+    // If no suitable element found, clear highlight
+    if (!targetElement) {
+      clearElementHighlight();
+      return;
     }
-  }, 16); // ~60fps throttling
+    
+    // If same element is already highlighted, do nothing
+    if (targetElement === currentHighlightedElement) {
+      return;
+    }
+    
+    // Clear previous highlight first (ensures only one element is highlighted)
+    clearElementHighlight();
+    
+    // Highlight the new element
+    highlightElement(targetElement);
+  }, 8); // ~120fps throttling for ultra-smooth experience
+};
+
+const hasDirectContent = (element) => {
+  const tagName = element.tagName.toLowerCase();
+  
+  // Direct text elements - these always have content
+  const textElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'button', 'input', 'textarea', 'select', 'label', 'figcaption', 'caption'];
+  if (textElements.includes(tagName)) {
+    // For text elements, check if they have visible text
+    const textContent = element.innerText?.trim() || '';
+    return textContent.length > 0;
+  }
+  
+  // Image elements
+  if (tagName === 'img') {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && 
+           style.display !== 'none' && 
+           style.visibility !== 'hidden' &&
+           style.opacity !== '0';
+  }
+  
+  // For divs and other containers, only highlight if they directly contain text or images
+  if (tagName === 'div' || tagName === 'section' || tagName === 'article') {
+    // Check if this div directly contains text (not in child elements)
+    const directText = Array.from(element.childNodes).some(node => 
+      node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
+    );
+    
+    // Check if this div directly contains an image
+    const directImage = Array.from(element.children).some(child => 
+      child.tagName.toLowerCase() === 'img'
+    );
+    
+    return directText || directImage;
+  }
+  
+  return false;
 };
 
 const findSuitableHighlightElement = (element) => {
-  // Look for meaningful elements to highlight
-  const meaningfulTags = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 
-                         'nav', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
-                         'form', 'table', 'tr', 'td', 'th', 'button', 'a', 'span'];
+  // Elements to ignore completely
+  const ignoreTags = ['body', 'html', 'head', 'script', 'style', 'meta', 'link', 'main', 'header', 'footer', 'nav'];
+  if (ignoreTags.includes(element.tagName.toLowerCase())) {
+    return null;
+  }
   
   let current = element;
   let attempts = 0;
-  const maxAttempts = 8; // Reduced to avoid going too far up the DOM
+  const maxAttempts = 4; // Limited to avoid going too far up the DOM
   
+  // First, check the current element
+  if (hasDirectContent(current)) {
+    const rect = current.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(current);
+    
+    if (rect.width > 30 && rect.height > 15 && 
+        computedStyle.display !== 'none' && 
+        computedStyle.visibility !== 'hidden' &&
+        computedStyle.opacity !== '0') {
+      return current;
+    }
+  }
+  
+  // If current element doesn't qualify, look at parent elements
   while (current && current !== document.body && attempts < maxAttempts) {
-    // Check if this element is suitable for highlighting
-    if (meaningfulTags.includes(current.tagName.toLowerCase())) {
+    current = current.parentElement;
+    if (!current) break;
+    
+    const tagName = current.tagName.toLowerCase();
+    
+    // Skip structural containers
+    if (['main', 'header', 'footer', 'nav', 'section', 'article', 'aside'].includes(tagName)) {
+      attempts++;
+      continue;
+    }
+    
+    if (hasDirectContent(current)) {
       const rect = current.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(current);
       
-      // Only highlight elements that are reasonably sized and visible
-      if (rect.width > 80 && rect.height > 30 && 
+      if (rect.width > 30 && rect.height > 15 && 
           computedStyle.display !== 'none' && 
           computedStyle.visibility !== 'hidden' &&
           computedStyle.opacity !== '0') {
-        
-        // Prefer elements that are not too nested (avoid very small nested elements)
-        const parentRect = current.parentElement ? current.parentElement.getBoundingClientRect() : rect;
-        const sizeRatio = (rect.width * rect.height) / (parentRect.width * parentRect.height);
-        
-        // If this element takes up a reasonable portion of its parent, it's good to highlight
-        if (sizeRatio > 0.1 || attempts < 3) {
-          return current;
-        }
+        return current;
       }
     }
-    current = current.parentElement;
     attempts++;
   }
   
-  // Fallback to the original element if no suitable parent found
-  return element;
+  return null;
 };
 
 const highlightElement = (element) => {
   currentHighlightedElement = element;
   
-  // Add highlight styles to the element
-  element.style.setProperty('box-shadow', '0 0 0 3px #007bff, 0 0 20px rgba(0, 123, 255, 0.5)', 'important');
+  // Add the highlight class for rounded borders and animations
+  element.classList.add('accessease-element-focus-highlight');
+  
+  // Add precise silver glow effect as specified
+  element.style.setProperty('box-shadow', '0 0 12px 3px rgba(192, 192, 192, 0.7)', 'important');
   element.style.setProperty('position', 'relative', 'important');
   element.style.setProperty('z-index', '999999999', 'important');
+  element.style.setProperty('transition', 'all 0.2s ease-in-out', 'important');
   
   // Create a cutout in the overlay for this element
   createOverlayCutout(element);
@@ -377,10 +464,15 @@ const updateOverlayCutout = () => {
 
 const clearElementHighlight = () => {
   if (currentHighlightedElement) {
-    // Remove highlight styles
-    currentHighlightedElement.style.removeProperty('box-shadow');
+    // Remove the highlight class
+    currentHighlightedElement.classList.remove('accessease-element-focus-highlight');
+    
+    // Remove all highlight styles instantly
+    currentHighlightedElement.style.setProperty('box-shadow', 'none', 'important');
     currentHighlightedElement.style.removeProperty('position');
     currentHighlightedElement.style.removeProperty('z-index');
+    currentHighlightedElement.style.removeProperty('transition');
+    
     currentHighlightedElement = null;
   }
   
@@ -388,7 +480,9 @@ const clearElementHighlight = () => {
   if (elementFocusOverlay) {
     elementFocusOverlay.style.display = 'none';
     elementFocusOverlay.style.clipPath = 'none';
-    elementFocusOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+    elementFocusOverlay.style.backgroundColor = 'rgba(128, 128, 128, 0.25)';
+    elementFocusOverlay.style.backdropFilter = 'blur(3px)';
+    elementFocusOverlay.style.WebkitBackdropFilter = 'blur(3px)';
     elementFocusOverlay.style.backgroundImage = 'none';
     elementFocusOverlay.style.backgroundSize = 'auto';
     elementFocusOverlay.style.backgroundPosition = 'auto';
@@ -670,9 +764,43 @@ const sendToAI = async (action, query = null) => {
   });
 };
 
+// --- Element Focus CSS Injection ---
+
+const injectElementFocusStyles = () => {
+  // Check if styles are already injected
+  if (document.getElementById('accessease-element-focus-styles')) return;
+  
+  const style = document.createElement('style');
+  style.id = 'accessease-element-focus-styles';
+  style.textContent = `
+    @keyframes accessease-silver-pulse {
+      0%, 100% {
+        box-shadow: 0 0 12px 3px rgba(192, 192, 192, 0.7);
+      }
+      50% {
+        box-shadow: 0 0 16px 4px rgba(192, 192, 192, 0.8);
+      }
+    }
+    
+    .accessease-element-focus-highlight {
+      border-radius: 12px !important;
+      transition: all 0.2s ease-in-out !important;
+      animation: accessease-silver-pulse 2s ease-in-out infinite !important;
+    }
+    
+    .accessease-element-focus-transition {
+      transition: all 0.2s ease-in-out !important;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
 // --- Initialization and Message Listener ---
 
 const initializeSettings = () => {
+  // Inject CSS animations for Element Focus
+  injectElementFocusStyles();
+  
   chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'elementFocusMode', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
     setColorFilter(result.colorFilter || 'none');
     setDyslexiaFont(result.dyslexiaFont || 'none');
