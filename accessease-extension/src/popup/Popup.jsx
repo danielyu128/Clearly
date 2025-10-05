@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Type, Eye, Monitor, ArrowUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, BookOpen, Type, Eye, Monitor, ArrowUp, MessageCircle, Send, Bot, User, X } from 'lucide-react';
 
 const Popup = () => {
   const [colorFilter, setColorFilter] = useState('none');
@@ -10,9 +10,6 @@ const Popup = () => {
   const [dyslexiaMode, setDyslexiaMode] = useState(false);
 
   // AI Assistant states
-  const [aiResponse, setAiResponse] = useState('');
-  const [userQuestion, setUserQuestion] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('accessibility'); // 'accessibility' or 'ai'
   const [apiKey, setApiKey] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -20,6 +17,14 @@ const Popup = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [showChatInterface, setShowChatInterface] = useState(false);
+  const [pageText, setPageText] = useState('');
+  const [initialQuestion, setInitialQuestion] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userInput, setUserInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'elementFocusMode', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
@@ -143,63 +148,118 @@ const Popup = () => {
     });
   };
 
+  // Auto-scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  // Typing animation function
+  const typeMessage = (fullText, messageId) => {
+    setIsTyping(true);
+    let currentText = '';
+    let index = 0;
+    
+    const typeInterval = setInterval(() => {
+      if (index < fullText.length) {
+        currentText += fullText[index];
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, content: currentText + '|' } // Add cursor
+            : msg
+        ));
+        index++;
+      } else {
+        // Remove cursor when done
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? { ...msg, content: currentText }
+            : msg
+        ));
+        clearInterval(typeInterval);
+        setIsTyping(false);
+      }
+    }, 20); // Adjust speed here (lower = faster)
+  };
+
   // AI Assistant functions
   const handleSummarizePage = async () => {
-    if (isLoading) {
-      console.log("Already processing, ignoring duplicate request");
-      return;
-    }
-    
-    setIsLoading(true);
-    setAiResponse('');
-    
-    // Get page text from content script first
+    // Get page text and open chat with summarize request
     await sendMessageToContentScript("GET_PAGE_TEXT", null, (pageResponse) => {
       if (pageResponse && pageResponse.success) {
-        // Send to background script for AI processing
-        sendMessageToBackground("summarizePage", { pageText: pageResponse.pageText }, (aiResponse) => {
-          setIsLoading(false);
-          if (aiResponse && aiResponse.success) {
-            setAiResponse(aiResponse.text);
-          } else {
-            const errorMsg = aiResponse?.error || "Failed to summarize the page. Please try again.";
-            setAiResponse(`Error: ${errorMsg}. Make sure you're on a webpage and try refreshing the page.`);
-          }
-        });
+        setPageText(pageResponse.pageText);
+        setShowChatInterface(true);
+        setMessages([]); // Clear previous messages
+        setInitialQuestion("Please summarize this page for me");
+        // Send the initial summarize request
+        setTimeout(() => {
+          handleSendMessage("Please summarize this page for me");
+        }, 100);
       } else {
-        setIsLoading(false);
-        setAiResponse("Error: Could not extract page text. Please make sure you're on a webpage.");
+        alert("Error: Could not extract page text. Please make sure you're on a webpage.");
       }
     });
   };
 
-  const handleAskQuestion = async () => {
-    if (!userQuestion.trim() || isLoading) {
-      console.log("Question empty or already processing, ignoring request");
-      return;
-    }
-    
-    setIsLoading(true);
-    setAiResponse('');
-    
-    // Get page text from content script first
+
+  const handleOpenChat = async () => {
+    // Get page text for the chat interface
     await sendMessageToContentScript("GET_PAGE_TEXT", null, (pageResponse) => {
       if (pageResponse && pageResponse.success) {
-        // Send to background script for AI processing
-        sendMessageToBackground("askQuestion", { query: userQuestion, pageText: pageResponse.pageText }, (aiResponse) => {
-          setIsLoading(false);
-          if (aiResponse && aiResponse.success) {
-            setAiResponse(aiResponse.text);
-          } else {
-            const errorMsg = aiResponse?.error || "Failed to get an answer. Please try again.";
-            setAiResponse(`Error: ${errorMsg}. Make sure you're on a webpage and try refreshing the page.`);
-          }
-        });
+        setPageText(pageResponse.pageText);
+        setShowChatInterface(true);
+        setMessages([]); // Clear previous messages
+        setInitialQuestion('');
       } else {
-        setIsLoading(false);
-        setAiResponse("Error: Could not extract page text. Please make sure you're on a webpage.");
+        alert("Error: Could not extract page text. Please make sure you're on a webpage.");
       }
     });
+  };
+
+  const handleSendMessage = async (messageText = null) => {
+    const message = messageText || userInput.trim();
+    if (!message) return;
+
+    // Add user message
+    const newMessage = { id: Date.now(), type: 'user', content: message };
+    setMessages(prev => [...prev, newMessage]);
+    setUserInput('');
+    setIsLoading(true);
+
+    // Send to background script for AI processing
+    sendMessageToBackground("askQuestion", { 
+      query: message, 
+      pageText: pageText 
+    }, (response) => {
+      setIsLoading(false);
+      if (response && response.success) {
+        const aiMessage = { 
+          id: Date.now() + 1, 
+          type: 'ai', 
+          content: '' // Start with empty content
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        // Start typing animation
+        setTimeout(() => {
+          typeMessage(response.text, aiMessage.id);
+        }, 100);
+      } else {
+        const errorMessage = { 
+          id: Date.now() + 1, 
+          type: 'ai', 
+          content: response?.error || "Sorry, I couldn't process your request. Please try again." 
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    });
+  };
+
+  const handleCloseChat = () => {
+    setShowChatInterface(false);
+    setMessages([]);
+    setInitialQuestion('');
+    setUserInput('');
   };
 
   const handleFindAndHighlight = async (searchTerm) => {
@@ -298,7 +358,7 @@ const Popup = () => {
   };
 
   return (
-    <div className="relative w-[400px] h-[600px] overflow-hidden bg-[#0a0f1a] rounded-2xl">
+    <div className="relative w-[400px] h-[600px] overflow-hidden bg-[#0a0f1a]">
       {/* Animated gradient blobs */}
       <div className="absolute -top-10 -left-10 w-32 h-32 rounded-[60%] bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 opacity-40 blur-xl animate-pulse" />
       <div className="absolute top-20 -right-16 w-40 h-40 rounded-[70%] bg-gradient-to-bl from-pink-500 via-purple-600 to-blue-600 opacity-30 blur-xl animate-pulse delay-1000" />
@@ -306,7 +366,7 @@ const Popup = () => {
       <div className="absolute -bottom-16 -right-10 w-48 h-48 rounded-[75%] bg-gradient-to-tl from-purple-500 via-blue-500 to-pink-600 opacity-35 blur-xl animate-pulse delay-700" />
 
       {/* Main glassmorphic card */}
-      <div className="relative z-10 m-4 p-4 rounded-xl bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-blue-500/20">
+      <div className="relative z-10 m-4 p-4 bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-blue-500/20">
         {/* Header */}
         <h1 className="text-2xl font-bold text-white mb-4 tracking-tight">Clearly</h1>
 
@@ -523,7 +583,7 @@ const Popup = () => {
         )}
 
         {/* AI Focus Tab */}
-        {activeTab === 'ai' && (
+        {activeTab === 'ai' && !showChatInterface && (
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white">AI Focus</h2>
             
@@ -553,54 +613,118 @@ const Popup = () => {
             )}
             
             {/* Quick Actions */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <button
                 onClick={handleSummarizePage}
-                disabled={isLoading}
-                className="glass-corner-shine w-full py-3 px-4 bg-gradient-to-br from-blue-500/90 via-purple-500/90 to-pink-500/90 text-white rounded-full hover:from-blue-600/90 hover:via-purple-600/90 hover:to-pink-600/90 transition-all font-semibold text-sm shadow-xl shadow-purple-500/60 hover:shadow-purple-500/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="glass-corner-shine w-full py-4 px-6 bg-gradient-to-br from-blue-500/90 via-purple-500/90 to-pink-500/90 text-white rounded-full hover:from-blue-600/90 hover:via-purple-600/90 hover:to-pink-600/90 transition-all font-semibold text-base shadow-xl shadow-purple-500/60 hover:shadow-purple-500/80"
               >
-                {isLoading ? 'Processing...' : 'Summarize Page'}
+                Summarize Page
+              </button>
+              
+              <button
+                onClick={handleOpenChat}
+                className="glass-corner-shine w-full py-4 px-6 bg-gradient-to-br from-green-500/90 via-blue-500/90 to-purple-500/90 text-white rounded-full hover:from-green-600/90 hover:via-blue-600/90 hover:to-purple-600/90 transition-all font-semibold text-base shadow-xl shadow-green-500/60 hover:shadow-green-500/80 flex items-center justify-center gap-3"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Open AI Chat
               </button>
             </div>
             
-            {/* Question Input */}
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={userQuestion}
-                  onChange={(e) => setUserQuestion(e.target.value)}
-                  placeholder="Ask a question about this page..."
-                  className="glass-reflection w-full px-3 py-2 pr-12 bg-white/15 backdrop-blur-xl border border-white/20 text-white placeholder-white/50 text-sm rounded-full"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAskQuestion();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleAskQuestion}
-                  disabled={isLoading || !userQuestion.trim()}
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                    userQuestion.trim() && !isLoading
-                      ? 'bg-white text-gray-800 hover:bg-white/90 shadow-lg'
-                      : 'bg-white/20 text-white/40 cursor-not-allowed'
-                  }`}
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            
-            {/* AI Response */}
-            {aiResponse && (
-              <div className="glass-reflection p-3 rounded-lg bg-white/5 backdrop-blur-sm border border-white/20 max-h-40 overflow-y-auto">
-                <strong className="text-white text-sm">AI Response:</strong>
-                <div className="mt-2 text-white/90 text-sm leading-relaxed whitespace-pre-wrap">
-                  {aiResponse}
+          </div>
+        )}
+
+        {/* Chat Interface */}
+        {activeTab === 'ai' && showChatInterface && (
+          <div className="space-y-4 h-[500px] flex flex-col">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">AI Assistant</h2>
+                  <p className="text-xs text-white/60">Ask me anything about this page</p>
                 </div>
               </div>
-            )}
+              <button
+                onClick={handleCloseChat}
+                className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-600/80 text-white transition-all flex items-center justify-center hover:scale-110"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto space-y-4 bg-gradient-to-b from-transparent to-black/20 rounded-lg p-4 min-h-0 chat-scroll">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-2xl ${
+                      message.type === 'user'
+                        ? 'bg-gradient-to-br from-blue-500/90 to-purple-500/90 text-white'
+                        : 'bg-white/10 backdrop-blur-xl text-white border border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {message.type === 'ai' && (
+                        <Bot className="w-4 h-4 text-blue-400 mt-1 flex-shrink-0" />
+                      )}
+                      {message.type === 'user' && (
+                        <User className="w-4 h-4 text-white/80 mt-1 flex-shrink-0" />
+                      )}
+                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(isLoading || isTyping) && (
+                <div className="flex justify-start">
+                  <div className="bg-white/10 backdrop-blur-xl text-white border border-white/20 p-3 rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-blue-400" />
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce delay-100"></div>
+                        <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce delay-200"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Ask a question..."
+                className="flex-1 px-4 py-2 bg-white/15 backdrop-blur-xl border border-white/20 text-white placeholder-white/50 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !isLoading && !isTyping) {
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isLoading || isTyping}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!userInput.trim() || isLoading || isTyping}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  userInput.trim() && !isLoading && !isTyping
+                    ? 'bg-gradient-to-br from-blue-500/90 to-purple-500/90 text-white hover:from-blue-600/90 hover:to-purple-600/90 hover:scale-110'
+                    : 'bg-white/20 text-white/40 cursor-not-allowed'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

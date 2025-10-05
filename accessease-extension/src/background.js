@@ -318,7 +318,16 @@ Please provide:
 4. KEY POINTS: What are the main points? (3-4 bullet points)
 5. SOURCE: What website/publication is this from?
 
-Use a friendly, conversational tone. For author and date, only include information that is explicitly stated. For the main topic and key points, provide helpful analysis based on the content. If specific information is not available, say "Not specified" rather than guessing.`;
+ACCESSIBILITY REQUIREMENTS:
+- Use natural, conversational language that's easy to understand
+- Format dates in human-readable ways (e.g., "January 15, 2024" not "2024-01-15T00:00:00Z")
+- Convert technical information into friendly, accessible language
+- Write as if speaking to someone who needs clear, accessible information
+- DO NOT use markdown formatting like **bold** or *italic* - use plain text only
+- DO NOT use asterisks, underscores, or other formatting symbols
+- For author and date, only include information that is explicitly stated
+- For the main topic and key points, provide helpful analysis based on the content
+- If specific information is not available, say "Not specified" rather than guessing`;
           } else {
             // Adaptive behavior for structured or dynamic pages
             prompt = `You are an accessibility assistant helping users understand the purpose and structure of a webpage.
@@ -332,6 +341,8 @@ Please:
 - Keep the explanation smooth, natural, and friendly — avoid robotic phrasing
 - Focus on the main purpose and functionality, not technical details
 - Do NOT repeat HTML, code, or unrelated text
+- DO NOT use markdown formatting like **bold** or *italic* - use plain text only
+- DO NOT use asterisks, underscores, or other formatting symbols
 
 Content:
 ${rawText}`;
@@ -351,7 +362,7 @@ WEBPAGE CONTENT:
 ${pageText}
 
 Answer: Who is the author? If not found, say "Author not specified in the content."`;
-          } else if (question.includes('date') || question.includes('published') || question.includes('when')) {
+          } else           if (question.includes('date') || question.includes('published') || question.includes('when')) {
             prompt = `Find the PUBLISH DATE in this webpage content. Look for:
 - Publication dates
 - "Published on", "Posted on", "Updated on"
@@ -361,7 +372,7 @@ Answer: Who is the author? If not found, say "Author not specified in the conten
 WEBPAGE CONTENT:
 ${pageText}
 
-Answer: When was this published? If not found, say "Publication date not specified in the content."`;
+IMPORTANT: Format your response in a natural, human-readable way. If you find a date, convert it to a friendly format like "January 15, 2024" or "yesterday" or "last week" rather than technical timestamps. If not found, say "The publication date is not mentioned on this page."`;
           } else if (question.includes('title') || question.includes('headline')) {
             prompt = `Find the TITLE/HEADLINE of this webpage. Look for:
 - Main heading (h1)
@@ -378,12 +389,17 @@ Answer: What is the title/headline?`;
 WEBPAGE CONTENT:
 ${pageText}
 
-Instructions:
+IMPORTANT ACCESSIBILITY INSTRUCTIONS:
+- Use natural, conversational language that's easy to understand
+- Format dates in human-readable ways (e.g., "January 15, 2024" not "2024-01-15T00:00:00Z")
+- Convert technical information into friendly, accessible language
+- DO NOT use markdown formatting like **bold** or *italic* - use plain text only
+- DO NOT use asterisks, underscores, or other formatting symbols
 - Be helpful and provide the best answer you can based on the content
 - For specific facts (like exact quotes, names, dates), only use information explicitly stated
 - For general questions about topics or concepts, provide helpful analysis based on the content
-- If specific information is not available, say "This specific information is not mentioned in the content"
-- Be conversational and helpful rather than overly restrictive`;
+- If specific information is not available, say "This information is not mentioned on this page"
+- Write as if speaking to someone who needs clear, accessible information`;
           }
         }
         
