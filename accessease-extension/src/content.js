@@ -104,7 +104,7 @@ const injectColorBlindnessFilters = () => {
           <feColorMatrix type="matrix" values="0.625 0.375 0 0 0 0.7 0.3 0 0 0 0 0.3 0.7 0 0 0 0 0 1 0"/>
         </filter>
         <filter id="tritanopia">
-          <feColorMatrix type="matrix" values="0.95 0.05 0 0 0 0 0.433 0.567 0 0 0 0 0.242 0.758 0 0 0 0 0 1 0"/>
+          <feColorMatrix type="matrix" values="1.000 0.000 0.000 0.000 0.000 0.000 0.000 1.000 0.000 0.000 0.000 1.000 0.000 0.000 0.000 0.000 0.000 0.000 1.000 0.000"/>
         </filter>
         <filter id="monochromacy">
           <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0"/>
