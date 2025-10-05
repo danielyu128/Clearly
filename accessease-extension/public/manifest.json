@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AccessEase MVP",
+  "name": "Clearly",
   "version": "1.0",
   "permissions": ["scripting", "activeTab", "storage", "tts"],
   "host_permissions": ["<all_urls>", "https://generativelanguage.googleapis.com/*"],
