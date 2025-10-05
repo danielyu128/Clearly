@@ -531,7 +531,7 @@ const Popup = () => {
                     className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
                       backgroundColor === 'default'
                         ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
-                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                        : "bg-white/15 backdrop-blur-xl text-black hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
                     }`}
                   >
                     Default
@@ -541,7 +541,7 @@ const Popup = () => {
                     className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
                       backgroundColor === 'lightyellow'
                         ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
-                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                        : "bg-white/15 backdrop-blur-xl text-black hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
                     }`}
                   >
                     Hi-Contrast
@@ -551,7 +551,7 @@ const Popup = () => {
                     className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
                       backgroundColor === 'darkmode'
                         ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
-                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                        : "bg-white/15 backdrop-blur-xl text-black hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
                     }`}
                   >
                     Dark Mode
@@ -561,7 +561,7 @@ const Popup = () => {
                     className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
                       backgroundColor === 'pastelblue'
                         ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
-                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                        : "bg-white/15 backdrop-blur-xl text-black hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
                     }`}
                   >
                     Calm
@@ -571,7 +571,7 @@ const Popup = () => {
                     className={`contrast-item glass-reflection py-3 px-4 text-xs rounded-full transition-all shadow-lg font-semibold ${
                       backgroundColor === 'beige'
                         ? "active bg-gradient-to-br from-blue-400/90 to-blue-600/90 text-white shadow-blue-500/60 backdrop-blur-xl"
-                        : "bg-white/15 backdrop-blur-xl text-white hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
+                        : "bg-white/15 backdrop-blur-xl text-black hover:bg-white/25 hover:shadow-lg hover:shadow-white/20"
                     }`}
                   >
                     Reading Mode
