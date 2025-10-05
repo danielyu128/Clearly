@@ -1,13 +1,15 @@
 // Initial state variables
 let currentColorFilter = 'none';
 let currentDyslexiaFont = 'none';
-let lineFocusActive = false;
+let elementFocusModeActive = false;
 let currentBackgroundColor = 'default';
 let currentFontSize = 100;
 let originalFontSizes = new Map();
-let lineFocusDiv = null;
+let elementFocusOverlay = null;
+let currentHighlightedElement = null;
 let mutationObserver = null;
 let dyslexiaModeActive = false;
+let hoverThrottleTimeout = null;
 
 // --- Utility Functions ---
 
@@ -189,36 +191,208 @@ const setDyslexiaFont = (font) => {
   }
 };
 
-// --- Line Focus (Reading Ruler) ---
+// --- Element Focus (Advanced Hover Highlighting) ---
 
-const toggleLineFocus = (active) => {
-  lineFocusActive = active;
+const toggleElementFocus = (active) => {
+  elementFocusModeActive = active;
+  
   if (active) {
-    if (!lineFocusDiv) {
-      lineFocusDiv = document.createElement("div");
-      lineFocusDiv.id = "accessease-line-focus";
-      Object.assign(lineFocusDiv.style, {
+    // Change cursor to pointer for the entire document
+    document.body.style.cursor = "pointer";
+    document.documentElement.style.cursor = "pointer";
+    
+    // Create overlay for dimming non-hovered elements
+    if (!elementFocusOverlay) {
+      elementFocusOverlay = document.createElement("div");
+      elementFocusOverlay.id = "accessease-element-focus-overlay";
+      Object.assign(elementFocusOverlay.style, {
         position: "fixed",
+        top: "0",
+        left: "0",
         width: "100%",
-        height: "2em",
+        height: "100%",
         pointerEvents: "none",
-        background: "rgba(255, 255, 0, 0.3)",
-        transition: "top 0.1s ease",
-        zIndex: "999999999"
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+        zIndex: "999999998",
+        transition: "opacity 0.2s ease"
       });
-      document.body.appendChild(lineFocusDiv);
+      document.body.appendChild(elementFocusOverlay);
+    }
 
-      document.addEventListener("mousemove", (e) => {
-        if (lineFocusActive && lineFocusDiv) {
-          lineFocusDiv.style.top = `${e.clientY - lineFocusDiv.offsetHeight / 2}px`;
-        }
-      });
-    }
+    // Add mouse move listener for hover detection
+    document.addEventListener("mousemove", handleElementHover, { passive: true });
+    document.addEventListener("mouseleave", clearElementHighlight, { passive: true });
+    window.addEventListener("scroll", updateOverlayCutout, { passive: true });
+    window.addEventListener("resize", updateOverlayCutout, { passive: true });
+    
   } else {
-    if (lineFocusDiv) {
-      lineFocusDiv.remove();
-      lineFocusDiv = null;
+    // Clean up when disabling
+    clearElementHighlight();
+    
+    // Clear throttle timeout
+    if (hoverThrottleTimeout) {
+      clearTimeout(hoverThrottleTimeout);
+      hoverThrottleTimeout = null;
     }
+    
+    // Restore normal cursor
+    document.body.style.cursor = "";
+    document.documentElement.style.cursor = "";
+    
+    if (elementFocusOverlay) {
+      elementFocusOverlay.remove();
+      elementFocusOverlay = null;
+    }
+    
+    document.removeEventListener("mousemove", handleElementHover);
+    document.removeEventListener("mouseleave", clearElementHighlight);
+    window.removeEventListener("scroll", updateOverlayCutout);
+    window.removeEventListener("resize", updateOverlayCutout);
+  }
+};
+
+const handleElementHover = (e) => {
+  if (!elementFocusModeActive) return;
+  
+  // Throttle hover events to prevent flickering
+  if (hoverThrottleTimeout) {
+    clearTimeout(hoverThrottleTimeout);
+  }
+  
+  hoverThrottleTimeout = setTimeout(() => {
+    // Get the element under the mouse cursor
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    
+    if (!element || element === currentHighlightedElement) return;
+    
+    // Skip if hovering over our own overlay or extension elements
+    if (element.id === "accessease-element-focus-overlay" || 
+        element.closest("#accessease-element-focus-overlay")) {
+      return;
+    }
+    
+    // Clear previous highlight
+    clearElementHighlight();
+    
+    // Find a suitable parent element to highlight (avoid highlighting tiny elements)
+    const targetElement = findSuitableHighlightElement(element);
+    
+    if (targetElement) {
+      highlightElement(targetElement);
+    }
+  }, 16); // ~60fps throttling
+};
+
+const findSuitableHighlightElement = (element) => {
+  // Look for meaningful elements to highlight
+  const meaningfulTags = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 
+                         'nav', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+                         'form', 'table', 'tr', 'td', 'th', 'button', 'a', 'span'];
+  
+  let current = element;
+  let attempts = 0;
+  const maxAttempts = 8; // Reduced to avoid going too far up the DOM
+  
+  while (current && current !== document.body && attempts < maxAttempts) {
+    // Check if this element is suitable for highlighting
+    if (meaningfulTags.includes(current.tagName.toLowerCase())) {
+      const rect = current.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(current);
+      
+      // Only highlight elements that are reasonably sized and visible
+      if (rect.width > 80 && rect.height > 30 && 
+          computedStyle.display !== 'none' && 
+          computedStyle.visibility !== 'hidden' &&
+          computedStyle.opacity !== '0') {
+        
+        // Prefer elements that are not too nested (avoid very small nested elements)
+        const parentRect = current.parentElement ? current.parentElement.getBoundingClientRect() : rect;
+        const sizeRatio = (rect.width * rect.height) / (parentRect.width * parentRect.height);
+        
+        // If this element takes up a reasonable portion of its parent, it's good to highlight
+        if (sizeRatio > 0.1 || attempts < 3) {
+          return current;
+        }
+      }
+    }
+    current = current.parentElement;
+    attempts++;
+  }
+  
+  // Fallback to the original element if no suitable parent found
+  return element;
+};
+
+const highlightElement = (element) => {
+  currentHighlightedElement = element;
+  
+  // Add highlight styles to the element
+  element.style.setProperty('box-shadow', '0 0 0 3px #007bff, 0 0 20px rgba(0, 123, 255, 0.5)', 'important');
+  element.style.setProperty('position', 'relative', 'important');
+  element.style.setProperty('z-index', '999999999', 'important');
+  
+  // Create a cutout in the overlay for this element
+  createOverlayCutout(element);
+};
+
+const createOverlayCutout = (element) => {
+  if (!elementFocusOverlay) return;
+  
+  const rect = element.getBoundingClientRect();
+  
+  // Ensure overlay is visible and properly positioned
+  elementFocusOverlay.style.display = 'block';
+  elementFocusOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+  elementFocusOverlay.style.zIndex = '999999998';
+  
+  // Create a cutout that reveals the element (everything else gets dimmed)
+  // We want to cover everything EXCEPT the highlighted element
+  const clipPath = `polygon(
+    0% 0%, 
+    0% 100%, 
+    ${rect.left}px 100%, 
+    ${rect.left}px ${rect.top}px, 
+    ${rect.right}px ${rect.top}px, 
+    ${rect.right}px ${rect.bottom}px, 
+    ${rect.left}px ${rect.bottom}px, 
+    ${rect.left}px 100%, 
+    100% 100%, 
+    100% 0%
+  )`;
+  
+  elementFocusOverlay.style.clipPath = clipPath;
+  
+  // Reset any fallback styles
+  elementFocusOverlay.style.backgroundImage = 'none';
+  elementFocusOverlay.style.backgroundSize = 'auto';
+  elementFocusOverlay.style.backgroundPosition = 'auto';
+  elementFocusOverlay.style.backgroundRepeat = 'auto';
+};
+
+const updateOverlayCutout = () => {
+  if (currentHighlightedElement && elementFocusOverlay) {
+    createOverlayCutout(currentHighlightedElement);
+  }
+};
+
+const clearElementHighlight = () => {
+  if (currentHighlightedElement) {
+    // Remove highlight styles
+    currentHighlightedElement.style.removeProperty('box-shadow');
+    currentHighlightedElement.style.removeProperty('position');
+    currentHighlightedElement.style.removeProperty('z-index');
+    currentHighlightedElement = null;
+  }
+  
+  // Hide overlay completely when no element is highlighted
+  if (elementFocusOverlay) {
+    elementFocusOverlay.style.display = 'none';
+    elementFocusOverlay.style.clipPath = 'none';
+    elementFocusOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+    elementFocusOverlay.style.backgroundImage = 'none';
+    elementFocusOverlay.style.backgroundSize = 'auto';
+    elementFocusOverlay.style.backgroundPosition = 'auto';
+    elementFocusOverlay.style.backgroundRepeat = 'auto';
   }
 };
 
@@ -499,10 +673,10 @@ const sendToAI = async (action, query = null) => {
 // --- Initialization and Message Listener ---
 
 const initializeSettings = () => {
-  chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'lineFocus', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
+  chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'elementFocusMode', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
     setColorFilter(result.colorFilter || 'none');
     setDyslexiaFont(result.dyslexiaFont || 'none');
-    toggleLineFocus(result.lineFocus || false);
+    toggleElementFocus(result.elementFocusMode || false);
     setBackgroundColor(result.backgroundColor || 'default');
     setFontSize(result.fontSize || 100);
     
@@ -540,40 +714,40 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         }
         return false; // Synchronous response
       
-      case "SET_COLOR_FILTER":
-        setColorFilter(request.value);
+    case "SET_COLOR_FILTER":
+      setColorFilter(request.value);
         sendResponse({ success: true });
         return false;
       
-      case "SET_DYSLEXIA_FONT":
-        setDyslexiaFont(request.value);
+    case "SET_DYSLEXIA_FONT":
+      setDyslexiaFont(request.value);
         sendResponse({ success: true });
         return false;
       
-      case "TOGGLE_LINE_FOCUS":
-        toggleLineFocus(request.value);
+      case "TOGGLE_ELEMENT_FOCUS":
+        toggleElementFocus(request.value);
         sendResponse({ success: true });
         return false;
       
-      case "SET_BACKGROUND_COLOR":
-        setBackgroundColor(request.value);
+    case "SET_BACKGROUND_COLOR":
+      setBackgroundColor(request.value);
         sendResponse({ success: true });
         return false;
       
-      case "SET_FONT_SIZE":
-        setFontSize(request.value);
+    case "SET_FONT_SIZE":
+      setFontSize(request.value);
         sendResponse({ success: true });
         return false;
       
-      case "enableDyslexia":
-        applyDyslexiaMode();
-        chrome.storage.sync.set({ dyslexiaMode: true });
+    case "enableDyslexia":
+      applyDyslexiaMode();
+      chrome.storage.sync.set({ dyslexiaMode: true });
         sendResponse({ success: true });
         return false;
       
-      case "disableDyslexia":
-        removeDyslexiaMode();
-        chrome.storage.sync.set({ dyslexiaMode: false });
+    case "disableDyslexia":
+      removeDyslexiaMode();
+      chrome.storage.sync.set({ dyslexiaMode: false });
         sendResponse({ success: true });
         return false;
       
@@ -612,7 +786,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         }
         return false; // Synchronous response
       
-      default:
+    default:
         console.warn("Unknown message type:", request.type || request.action);
         sendResponse({ success: false, error: "Unknown message type" });
         return false;

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 const Popup = () => {
   const [colorFilter, setColorFilter] = useState('none');
   const [dyslexiaFont, setDyslexiaFont] = useState('none');
-  const [lineFocus, setLineFocus] = useState(false);
+  const [elementFocusMode, setElementFocusMode] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState('default');
   const [fontSize, setFontSize] = useState(100);
   const [dyslexiaMode, setDyslexiaMode] = useState(false);
@@ -18,10 +18,10 @@ const Popup = () => {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
-    chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'lineFocus', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
+    chrome.storage.sync.get(['colorFilter', 'dyslexiaFont', 'elementFocusMode', 'backgroundColor', 'fontSize', 'dyslexiaMode'], (result) => {
       setColorFilter(result.colorFilter || 'none');
       setDyslexiaFont(result.dyslexiaFont || 'none');
-      setLineFocus(result.lineFocus || false);
+      setElementFocusMode(result.elementFocusMode || false);
       setBackgroundColor(result.backgroundColor || 'default');
       setFontSize(result.fontSize || 100);
       setDyslexiaMode(result.dyslexiaMode || false);
@@ -226,11 +226,11 @@ const Popup = () => {
     await sendMessageToContentScript("SET_DYSLEXIA_FONT", newFont);
   };
 
-  const handleLineFocusToggle = async () => {
-    const newState = !lineFocus;
-    setLineFocus(newState);
-    chrome.storage.sync.set({ lineFocus: newState });
-    await sendMessageToContentScript("TOGGLE_LINE_FOCUS", newState);
+  const handleElementFocusToggle = async () => {
+    const newState = !elementFocusMode;
+    setElementFocusMode(newState);
+    chrome.storage.sync.set({ elementFocusMode: newState });
+    await sendMessageToContentScript("TOGGLE_ELEMENT_FOCUS", newState);
   };
 
   const handleBackgroundColorChange = async (e) => {
@@ -397,9 +397,9 @@ const Popup = () => {
       </button>
       <br /><br />
 
-      <h4>Line Focus</h4>
-      <button onClick={handleLineFocusToggle}>
-        {lineFocus ? "Disable Line Focus" : "Enable Line Focus"}
+      <h4>Element Focus</h4>
+      <button onClick={handleElementFocusToggle}>
+        {elementFocusMode ? "Disable Element Focus" : "Enable Element Focus"}
       </button>
       <br /><br />
 
