@@ -102,7 +102,6 @@ Clearly enhances web accessibility with a combination of intelligent and visual 
 | **Chrome Extension** | Manifest V3, JavaScript |
 | **AI** | Google Gemini API |
 | **Tools** | HTML, CSS, Node.js |
-| **Design** | Figma |
 
 ---
 
